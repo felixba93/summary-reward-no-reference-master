@@ -13,7 +13,7 @@ import math
 from torchvision import models
 from resources import MODEL_WEIGHT_DIR
 from matplotlib import pyplot as plt
-
+import csv
 
 
 def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'):
@@ -61,14 +61,14 @@ def build_model(model_type, vec_length, learn_rate=None):
 def deep_pair_train(vec_list, target, deep_model, optimiser, device):
     # print(np.array(vec_list).shape)
     input = Variable(torch.from_numpy(np.array(vec_list)).float())
-    #print(input)
+    # print(input)
     if 'gpu' in device:
         input = input.to('cuda')
     value_variables = deep_model(input)
-    #print(value_variables)
+    # print(value_variables)
     softmax_layer = torch.nn.Softmax(dim=1)
     pred = softmax_layer(value_variables)
-    #print(pred)
+    # print(pred)
     # print(np.array(target).shape, np.array(target).reshape(-1, 2, 1).shape)
     target_variables = Variable(torch.from_numpy(np.array(target)).float()).view(-1, 2, 1)
     # print(target_variables)
@@ -78,7 +78,7 @@ def deep_pair_train(vec_list, target, deep_model, optimiser, device):
 
     loss_fn = torch.nn.BCELoss()
     loss = loss_fn(pred, target_variables)
-    #print(loss)
+    # print(loss)
 
     optimiser.zero_grad()
     loss.backward()
@@ -132,7 +132,7 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, batch_size=32, de
     return np.mean(loss_list)
 
 
-def test_rewarder(vec_list, human_scores, model, device):
+def test_rewarder(vec_list, human_scores, model, device, print):
     results = {'rho': [], 'pcc': [], 'tau': []}
     for article_id in human_scores:
         entry = human_scores[article_id]
@@ -152,15 +152,23 @@ def test_rewarder(vec_list, human_scores, model, device):
             input = input.to('cuda')
         model.eval()
         with torch.no_grad():
-            #print(true_scores)
-            #print(np.array(true_scores).shape)
-            #print(input)
-            #print(input.shape)
-            #print(model(input).data.cpu().numpy())
-            #print(model(input).data.cpu().numpy().shape)
+            # print(true_scores)
+            # print(np.array(true_scores).shape)
+            # print(input)
+            # print(input.shape)
+            # print(model(input).data.cpu().numpy())
+            # print(model(input).data.cpu().numpy().shape)
             pred_scores = model(input).data.cpu().numpy().reshape(1, -1)[0]
 
+        rho = spearmanr(true_scores, pred_scores)[0]
+        pcc = pearsonr(true_scores, pred_scores)[0]
+        tau = kendalltau(true_scores, pred_scores)[0]
+        if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
+            results['rho'].append(rho)
+            results['pcc'].append(pcc)
+            results['tau'].append(tau)
 
+    if print:
         fig, ax = plt.subplots()
 
         unique = np.sort(np.unique(true_scores))
@@ -174,19 +182,7 @@ def test_rewarder(vec_list, human_scores, model, device):
 
         xticklabels = true_scores
         ax.set_xticks(true_scores)
-        plt.show()
-        #plt.savefig('better_rewards_violin_1.pdf')
-
-        #plt.scatter(true_scores, pred_scores)
-
-
-        rho = spearmanr(true_scores, pred_scores)[0]
-        pcc = pearsonr(true_scores, pred_scores)[0]
-        tau = kendalltau(true_scores, pred_scores)[0]
-        if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
-            results['rho'].append(rho)
-            results['pcc'].append(pcc)
-            results['tau'].append(tau)
+        plt.savefig('BetterRewards_Violin.pdf')
 
     return results
 
@@ -199,7 +195,7 @@ def parse_args():
     ap.add_argument('-tp', '--train_percent', type=float, help='how many data used for training', default=.64)
     ap.add_argument('-dp', '--dev_percent', type=float, help='how many data used for dev', default=.16)
     ap.add_argument('-lr', '--learn_rate', type=float, help='learning rate', default=3e-4)
-    ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='linear')
+    ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='deep')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
     ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
 
@@ -222,66 +218,84 @@ if __name__ == '__main__':
     print('seed {}'.format(seed))
     print('=====Arguments====\n')
 
-    np.random.seed(seed=seed)
-    random.seed(seed)
-    torch.random.manual_seed(seed)
-    torch.manual_seed(seed)
+    with open('BetterRewardsStatistics.csv', 'a') as csv_file:
+        writer = csv.writer(csv_file)
 
+        np.random.seed(seed=seed)
+        random.seed(seed)
+        torch.random.manual_seed(seed)
+        torch.manual_seed(seed)
 
-    if train_percent + dev_percent >= 1.:
-        print('ERROR! Train data percentage plus dev data percentage is {}! Make sure the sum is below 1.0!'.format(
-            train_percent + dev_percent))
-        exit(1)
+        if train_percent + dev_percent >= 1.:
+            print('ERROR! Train data percentage plus dev data percentage is {}! Make sure the sum is below 1.0!'.format(
+                train_percent + dev_percent))
+            exit(1)
 
-    BERT_VEC_LENGTH = 1024  # change this to 768 if you use bert-base
-    deep_model, optimiser = build_model(model_type, BERT_VEC_LENGTH * 2, learn_rate)
-    if 'gpu' in device:
-        deep_model.to('cuda')
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        BERT_VEC_LENGTH = 1024  # change this to 768 if you use bert-base
+        deep_model, optimiser = build_model(model_type, BERT_VEC_LENGTH * 2, learn_rate)
+        if 'gpu' in device:
+            deep_model.to('cuda')
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
+        # read human scores and vectors for summaries/docs, and split the train/dev/test set
+        sorted_scores = read_sorted_scores()
+        train, dev, test, all = parse_split_data(sorted_scores, train_percent, dev_percent)
 
-    # read human scores and vectors for summaries/docs, and split the train/dev/test set
-    sorted_scores = read_sorted_scores()
-    train, dev, test, all = parse_split_data(sorted_scores, train_percent, dev_percent)
+        train_pairs = build_pairs(train)
+        dev_pairs = build_pairs(dev)
+        test_pairs = build_pairs(test)
+        print(len(train_pairs), len(dev_pairs), len(test_pairs))
 
-    train_pairs = build_pairs(train)
-    dev_pairs = build_pairs(dev)
-    test_pairs = build_pairs(test)
-    print(len(train_pairs), len(dev_pairs), len(test_pairs))
+        # read bert vectors
+        with open('data/doc_summ_bert_vectors.pkl', 'rb') as ff:
+            all_vec_dic = pickle.load(ff)
 
-    # read bert vectors
-    with open('data/doc_summ_bert_vectors.pkl', 'rb') as ff:
-        all_vec_dic = pickle.load(ff)
+        pcc_list = []
+        weights_list = []
+        for ii in range(epoch_num):
+            print('\n=====EPOCH {}====='.format(ii))
+            loss = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, batch_size, device)
 
-    pcc_list = []
-    weights_list = []
-    for ii in range(epoch_num):
-        print('\n=====EPOCH {}====='.format(ii))
-        loss = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, batch_size, device)
-        print('--> loss', loss)
+            csv_row = [seed, learn_rate, model_type, ii, loss]
+            print('--> loss', loss)
 
-        results = test_rewarder(all_vec_dic, dev, deep_model, device)
-        for metric in results:
-            print('{}\t{}'.format(metric, np.mean(results[metric])))
-        pcc_list.append(np.mean(results['pcc']))
-        weights_list.append(copy.deepcopy(deep_model.state_dict()))
+            results = test_rewarder(all_vec_dic, dev, deep_model, device, False)
+            for metric in results:
+                print('{}\t{}'.format(metric, np.mean(results[metric])))
+                csv_row.append(np.mean(results[metric]))
 
-    print(deep_model)
+            #Nur auf dem Test-Datensatz
+            results_test = test_rewarder(all_vec_dic, test, deep_model, device, False)
+            for metric in results_test:
+                print('{}\t{}'.format(metric, np.mean(results_test[metric])))
+                csv_row.append(np.mean(results_test[metric]))
 
-    idx = np.argmax(pcc_list)
-    best_result = pcc_list[idx]
-    print('\n======Best results come from epoch no. {}====='.format(idx))
+            #Nur auf dem Trainings-Datensatz
+            results_train = test_rewarder(all_vec_dic, train, deep_model, device, False)
+            for metric in results_train:
+                print('{}\t{}'.format(metric, np.mean(results_train[metric])))
+                csv_row.append(np.mean(results_train[metric]))
 
-    deep_model.load_state_dict(weights_list[idx])
-    test_results = test_rewarder(all_vec_dic, test, deep_model, device)
-    print('Its performance on the test set is:')
-    for metric in test_results:
-        print('{}\t{}'.format(metric, np.mean(test_results[metric])))
-    model_weight_name = 'pcc{0:.4f}_'.format(np.mean(test_results['pcc']))
-    model_weight_name += 'epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
-        epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
-    )
+            writer.writerow(csv_row)
+            pcc_list.append(np.mean(results['pcc']))
+            weights_list.append(copy.deepcopy(deep_model.state_dict()))
 
-    torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
-    print('\nbest model weight saved to: {}'.format(os.path.join(MODEL_WEIGHT_DIR, model_weight_name)))
+        #print(deep_model)
+
+        idx = np.argmax(pcc_list)
+        best_result = pcc_list[idx]
+        print('\n======Best results come from epoch no. {}====='.format(idx))
+
+        deep_model.load_state_dict(weights_list[idx])
+        test_results = test_rewarder(all_vec_dic, test, deep_model, device, True)
+        print('Its performance on the test set is:')
+        for metric in test_results:
+            print('{}\t{}'.format(metric, np.mean(test_results[metric])))
+        model_weight_name = 'pcc{0:.4f}_'.format(np.mean(test_results['pcc']))
+        model_weight_name += 'epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
+            epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
+        )
+
+        torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
+        print('\nbest model weight saved to: {}'.format(os.path.join(MODEL_WEIGHT_DIR, model_weight_name)))
