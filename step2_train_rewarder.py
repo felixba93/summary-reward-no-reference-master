@@ -86,6 +86,30 @@ def deep_pair_train(vec_list, target, deep_model, optimiser, device):
 
     return loss.cpu().item()
 
+def deep_pair_train_loss_only(vec_list, target, deep_model, optimiser, device):
+    # print(np.array(vec_list).shape)
+    input = Variable(torch.from_numpy(np.array(vec_list)).float())
+    # print(input)
+    if 'gpu' in device:
+        input = input.to('cuda')
+    value_variables = deep_model(input)
+    # print(value_variables)
+    softmax_layer = torch.nn.Softmax(dim=1)
+    pred = softmax_layer(value_variables)
+    # print(pred)
+    # print(np.array(target).shape, np.array(target).reshape(-1, 2, 1).shape)
+    target_variables = Variable(torch.from_numpy(np.array(target)).float()).view(-1, 2, 1)
+    # print(target_variables)
+
+    if 'gpu' in device:
+        target_variables = target_variables.to('cuda')
+
+    loss_fn = torch.nn.BCELoss()
+    loss = loss_fn(pred, target_variables)
+    # print(loss)
+
+    return loss.cpu().item()
+
 
 def build_pairs(entries):
     pair_list = []
@@ -115,7 +139,7 @@ def build_pair_vecs(vecs, pairs):
     return pair_vec_list
 
 
-def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, batch_size=32, device='cpu'):
+def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_size=32, device='cpu'):
     loss_list = []
     shuffled_pairs = pairs[:]
     np.random.shuffle(shuffled_pairs)
@@ -126,7 +150,10 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, batch_size=32, de
         vec_batch = vec_pairs[pointer * batch_size:(pointer + 1) * batch_size]
         target_batch = shuffled_pairs[pointer * batch_size:(pointer + 1) * batch_size]
         target_batch = [ee[-1] for ee in target_batch]
-        loss = deep_pair_train(vec_batch, target_batch, deep_model, optimiser, device)
+        if loss_only:
+            loss = deep_pair_train_loss_only(vec_batch, target_batch, deep_model, optimiser, device)
+        else:
+            loss = deep_pair_train(vec_batch, target_batch, deep_model, optimiser, device)
         loss_list.append(loss)
 
     return np.mean(loss_list)
@@ -255,9 +282,19 @@ if __name__ == '__main__':
         weights_list = []
         for ii in range(epoch_num):
             print('\n=====EPOCH {}====='.format(ii))
-            loss = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, batch_size, device)
+            loss = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, False, batch_size, device)
 
-            csv_row = [seed, learn_rate, model_type, ii, loss]
+            loss_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, False, batch_size, device)
+
+            loss_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, False, batch_size, device)
+
+            loss_only_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size, device)
+
+            loss_only_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, True, batch_size, device)
+
+            loss_only_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, True, batch_size, device)
+
+            csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss, loss_dev, loss_test, loss_only_train, loss_only_dev, loss_only_test]
             print('--> loss', loss)
 
             results = test_rewarder(all_vec_dic, dev, deep_model, device, False)
