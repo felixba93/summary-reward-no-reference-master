@@ -21,8 +21,9 @@ def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'
     dev = {}
     test = {}
     all = {}
-
+    topic_count = 0
     for article_id, scores_list in tqdm(sorted_scores.items()):
+
         entry = {}
         summ_ids = [s['summ_id'] for s in scores_list]
         for sid in summ_ids:
@@ -36,6 +37,9 @@ def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'
             dev[article_id] = entry
         else:
             test[article_id] = entry
+
+        topic_count += 1
+    print("topics in parse_split_data", topic_count)
 
     return train, dev, test, all
 
@@ -113,6 +117,8 @@ def deep_pair_train_loss_only(vec_list, target, deep_model, optimiser, device):
 
 def build_pairs(entries):
     pair_list = []
+    topic_count = 0
+    summ_count = 0
     for article_id in entries:
         entry = entries[article_id]
         summ_ids = list(entry.keys())
@@ -125,7 +131,10 @@ def build_pairs(entries):
                 else:
                     pref = [0.5, 0.5]
                 pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
-
+        topic_count += 1
+        summ_count = summ_count+len(summ_ids)
+    print("topics", topic_count)
+    print("summ", summ_count)
     return pair_list
 
 
@@ -224,7 +233,7 @@ def parse_args():
     ap.add_argument('-lr', '--learn_rate', type=float, help='learning rate', default=3e-4)
     ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='deep')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
-    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
+    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='3')
 
     args = ap.parse_args()
     return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed
