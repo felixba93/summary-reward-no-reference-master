@@ -90,6 +90,7 @@ def deep_pair_train(vec_list, target, deep_model, optimiser, device):
 
     return loss.cpu().item()
 
+
 def deep_pair_train_loss_only(vec_list, target, deep_model, optimiser, device):
     # print(np.array(vec_list).shape)
     input = Variable(torch.from_numpy(np.array(vec_list)).float())
@@ -132,7 +133,7 @@ def build_pairs(entries):
                     pref = [0.5, 0.5]
                 pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
         topic_count += 1
-        summ_count = summ_count+len(summ_ids)
+        summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
     print("summ", summ_count)
     return pair_list
@@ -169,7 +170,9 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
 
 
 def test_rewarder(vec_list, human_scores, model, device, print):
-    results = {'rho': [], 'pcc': [], 'tau': []}
+    results = {'rho': [], 'pcc': [], 'tau': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
+    true_scores_all = []
+    pred_scores_all = []
     for article_id in human_scores:
         entry = human_scores[article_id]
         summ_ids = list(entry.keys())
@@ -183,6 +186,7 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             concat_vecs.append(article_vec + summ_vec)
             # print(np.array(concat_vecs).shape)
             true_scores.append(entry[summ_ids[i]])
+            true_scores_all += true_scores  # add scores for topic to list of all scores
         input = Variable(torch.from_numpy(np.array(concat_vecs)).float())
         if 'gpu' in device:
             input = input.to('cuda')
@@ -195,6 +199,7 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             # print(model(input).data.cpu().numpy())
             # print(model(input).data.cpu().numpy().shape)
             pred_scores = model(input).data.cpu().numpy().reshape(1, -1)[0]
+            pred_scores_all += pred_scores
 
         rho = spearmanr(true_scores, pred_scores)[0]
         pcc = pearsonr(true_scores, pred_scores)[0]
@@ -203,21 +208,28 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             results['rho'].append(rho)
             results['pcc'].append(pcc)
             results['tau'].append(tau)
+        rho = spearmanr(true_scores_all, pred_scores_all)[0]
+        pcc = pearsonr(true_scores_all, pred_scores_all)[0]
+        tau = kendalltau(true_scores_all, pred_scores_all)[0]
+        if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
+            results['rho_global'].append(rho)
+            results['pcc_global'].append(pcc)
+            results['tau_global'].append(tau)
 
     if print:
         fig, ax = plt.subplots()
 
-        unique = np.sort(np.unique(true_scores))
-        data_to_plot = [pred_scores[true_scores == true_score] for true_score in unique]
+        unique = np.sort(np.unique(true_scores_all))
+        data_to_plot = [pred_scores[true_scores_all == true_scores_all] for true_score in unique]
 
         ax.violinplot(data_to_plot, showmeans=False, showmedians=True)
-        ax.scatter(true_scores + np.random.normal(0, 0.1, pred_scores.shape[0]), pred_scores)
+        ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all)
         ax.set_title('BetterRewards')
-        ax.set_xlabel('true_scores')
-        ax.set_ylabel('pred_scores')
+        ax.set_xlabel('true_scores_all')
+        ax.set_ylabel('pred_scores_all')
 
-        xticklabels = true_scores
-        ax.set_xticks(true_scores)
+        xticklabels = true_scores_all
+        ax.set_xticks(true_scores_all)
         plt.savefig('BetterRewards_Violin.pdf')
 
     return results
@@ -233,7 +245,7 @@ def parse_args():
     ap.add_argument('-lr', '--learn_rate', type=float, help='learning rate', default=3e-4)
     ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='linear')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
-    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='2')
+    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
 
     args = ap.parse_args()
     return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed
@@ -289,21 +301,24 @@ if __name__ == '__main__':
 
         pcc_list = []
         weights_list = []
-        for ii in range(epoch_num+1):
+        for ii in range(epoch_num + 1):
             print('\n=====EPOCH {}====='.format(ii))
             if epoch_num == 0:
 
                 # do not train in epoch 0, just evaluate the performance of the randomly initialized model (sanity check and baseline)
-                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size, device)
+                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size,
+                                                 device)
             else:
                 # from epoch 1 on, receive the data and learn from it. the loss is still the loss before fed with the training examples
-                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, False, batch_size, device)
+                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, False, batch_size,
+                                                 device)
 
             loss_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, True, batch_size, device)
 
             loss_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, True, batch_size, device)
 
-            csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss_train, loss_dev, loss_test]
+            csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss_train,
+                       loss_dev, loss_test]
             print('--> loss', loss_train)
 
             results = test_rewarder(all_vec_dic, dev, deep_model, device, False)
