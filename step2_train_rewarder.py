@@ -231,9 +231,9 @@ def parse_args():
     ap.add_argument('-tp', '--train_percent', type=float, help='how many data used for training', default=.64)
     ap.add_argument('-dp', '--dev_percent', type=float, help='how many data used for dev', default=.16)
     ap.add_argument('-lr', '--learn_rate', type=float, help='learning rate', default=3e-4)
-    ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='deep')
+    ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='linear')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
-    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='3')
+    ap.add_argument('-se', '--seed', type=int, help='random seed number', default='2')
 
     args = ap.parse_args()
     return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed
@@ -254,7 +254,7 @@ if __name__ == '__main__':
     print('seed {}'.format(seed))
     print('=====Arguments====\n')
 
-    with open('BetterRewardsStatistics.csv', 'a') as csv_file:
+    with open('BetterRewardsStatistics_v4.csv', 'a') as csv_file:
         writer = csv.writer(csv_file)
 
         np.random.seed(seed=seed)
@@ -289,35 +289,35 @@ if __name__ == '__main__':
 
         pcc_list = []
         weights_list = []
-        for ii in range(epoch_num):
+        for ii in range(epoch_num+1):
             print('\n=====EPOCH {}====='.format(ii))
-            loss = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, False, batch_size, device)
+            if epoch_num == 0:
 
-            loss_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, False, batch_size, device)
+                # do not train in epoch 0, just evaluate the performance of the randomly initialized model (sanity check and baseline)
+                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size, device)
+            else:
+                # from epoch 1 on, receive the data and learn from it. the loss is still the loss before fed with the training examples
+                loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, False, batch_size, device)
 
-            loss_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, False, batch_size, device)
+            loss_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, True, batch_size, device)
 
-            loss_only_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size, device)
+            loss_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, True, batch_size, device)
 
-            loss_only_dev = pair_train_rewarder(all_vec_dic, dev_pairs, deep_model, optimiser, True, batch_size, device)
-
-            loss_only_test = pair_train_rewarder(all_vec_dic, test_pairs, deep_model, optimiser, True, batch_size, device)
-
-            csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss, loss_dev, loss_test, loss_only_train, loss_only_dev, loss_only_test]
-            print('--> loss', loss)
+            csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss_train, loss_dev, loss_test]
+            print('--> loss', loss_train)
 
             results = test_rewarder(all_vec_dic, dev, deep_model, device, False)
             for metric in results:
                 print('{}\t{}'.format(metric, np.mean(results[metric])))
                 csv_row.append(np.mean(results[metric]))
 
-            #Nur auf dem Test-Datensatz
+            # Test-Data only
             results_test = test_rewarder(all_vec_dic, test, deep_model, device, False)
             for metric in results_test:
                 print('{}\t{}'.format(metric, np.mean(results_test[metric])))
                 csv_row.append(np.mean(results_test[metric]))
 
-            #Nur auf dem Trainings-Datensatz
+            # Train-Data only
             results_train = test_rewarder(all_vec_dic, train, deep_model, device, False)
             for metric in results_train:
                 print('{}\t{}'.format(metric, np.mean(results_train[metric])))
@@ -326,8 +326,6 @@ if __name__ == '__main__':
             writer.writerow(csv_row)
             pcc_list.append(np.mean(results['pcc']))
             weights_list.append(copy.deepcopy(deep_model.state_dict()))
-
-        #print(deep_model)
 
         idx = np.argmax(pcc_list)
         best_result = pcc_list[idx]
