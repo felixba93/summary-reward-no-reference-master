@@ -23,3 +23,4 @@ ABS_MODEL_DIR = os.path.join(BASE_DIR, 'fast_abs_rl', 'pretrained', 'abstractor'
 FAST_ABS_RL = os.path.join(BASE_DIR, 'fast_abs_rl')
 RUNS_DIR = os.path.join(BASE_DIR, 'runs')
 MODEL_WEIGHT_DIR = os.path.join(BASE_DIR,'trained_models')
+OUTPUTS_DIR = os.path.join(BASE_DIR,'outputs')
