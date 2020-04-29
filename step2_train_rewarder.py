@@ -173,7 +173,8 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
 def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
     results = {'rho': [], 'pcc': [], 'tau': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
     true_scores_all = []
-    pred_scores_all = []
+    pred_scores_all = np.array([])
+    # pred_scores_all = []
     for article_id in human_scores:
         entry = human_scores[article_id]
         summ_ids = list(entry.keys())
@@ -200,7 +201,8 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
             # print(model(input).data.cpu().numpy())
             # print(model(input).data.cpu().numpy().shape)
             pred_scores = model(input).data.cpu().numpy().reshape(1, -1)[0]
-            pred_scores_all += list(pred_scores)
+            pred_scores_all = np.concatenate((pred_scores_all, pred_scores), axis=0)
+            # pred_scores_all += pred_scores.tolist()
 
         rho = spearmanr(true_scores, pred_scores)[0]
         pcc = pearsonr(true_scores, pred_scores)[0]
@@ -209,28 +211,29 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
             results['rho'].append(rho)
             results['pcc'].append(pcc)
             results['tau'].append(tau)
-        rho = spearmanr(true_scores_all, pred_scores_all)[0]
-        pcc = pearsonr(true_scores_all, pred_scores_all)[0]
-        tau = kendalltau(true_scores_all, pred_scores_all)[0]
-        if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
-            results['rho_global'].append(rho)
-            results['pcc_global'].append(pcc)
-            results['tau_global'].append(tau)
+    rho = spearmanr(true_scores_all, pred_scores_all)[0]
+    pcc = pearsonr(true_scores_all, pred_scores_all)[0]
+    tau = kendalltau(true_scores_all, pred_scores_all)[0]
+    if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
+        results['rho_global'].append(rho)
+        results['pcc_global'].append(pcc)
+        results['tau_global'].append(tau)
 
     if plot_file is not None:
         fig, ax = plt.subplots()
 
-        true_scores_all=np.array(true_scores_all)
-        pred_scores_all=np.array(pred_scores_all)
+        #true_scores_all=np.array(true_scores_all)
+        #pred_scores_all=np.array(pred_scores_all)
 
         unique = np.sort(np.unique(true_scores_all))
-        data_to_plot = [pred_scores_all[true_scores_all == true_scores] for true_score in unique]
+        data_to_plot = [pred_scores_all[true_score == true_scores_all] for true_score in unique]
 
+        # bw_methods determines how soft the distribution curve will be. lower values are more sharp
         ax.violinplot(data_to_plot, showmeans=True, showmedians=True,bw_method=0.2)
         ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all, marker=".", s=3, alpha=0.5)
-        ax.set_title('BetterRewards')
-        ax.set_xlabel('true_scores_all')
-        ax.set_ylabel('pred_scores_all')
+        ax.set_title('Comparison and distributions of true values to predicted score')
+        ax.set_xlabel('true scores')
+        ax.set_ylabel('predicted scores')
 
         xticklabels = true_scores_all
         ax.set_xticks(true_scores_all)
@@ -351,8 +354,8 @@ if __name__ == '__main__':
         print('\n======Best results come from epoch no. {}====='.format(idx))
 
         deep_model.load_state_dict(weights_list[idx])
-        output_pattern='batch{}_{}_trainPercent{}_lrate{}_{}_epoch{}'.format(
-            batch_size, train_type, train_percent, learn_rate, model_type,epoch_num
+        output_pattern='batch{}_{}_trainPercent{}_seed{}_lrate{}_{}_epoch{}'.format(
+            batch_size, train_type, train_percent, seed, learn_rate, model_type,epoch_num
         )
         test_results = test_rewarder(all_vec_dic, test, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTest.pdf'))
         test_rewarder(all_vec_dic, train, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTrain.pdf'))
@@ -361,8 +364,8 @@ if __name__ == '__main__':
         for metric in test_results:
             print('{}\t{}'.format(metric, np.mean(test_results[metric])))
         model_weight_name = 'pcc{0:.4f}_'.format(np.mean(test_results['pcc']))
-        model_weight_name += 'epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
-            epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
+        model_weight_name += 'seed{}_epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
+            seed, epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
         )
 
         torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
