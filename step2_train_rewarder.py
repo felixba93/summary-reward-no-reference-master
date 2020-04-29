@@ -172,7 +172,8 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
 def test_rewarder(vec_list, human_scores, model, device, print):
     results = {'rho': [], 'pcc': [], 'tau': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
     true_scores_all = []
-    pred_scores_all = []
+    pred_scores_all = np.array([])
+    # pred_scores_all = []
     for article_id in human_scores:
         entry = human_scores[article_id]
         summ_ids = list(entry.keys())
@@ -186,7 +187,7 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             concat_vecs.append(article_vec + summ_vec)
             # print(np.array(concat_vecs).shape)
             true_scores.append(entry[summ_ids[i]])
-            true_scores_all += true_scores  # add scores for topic to list of all scores
+        true_scores_all += true_scores  # add scores for topic to list of all scores
         input = Variable(torch.from_numpy(np.array(concat_vecs)).float())
         if 'gpu' in device:
             input = input.to('cuda')
@@ -199,7 +200,8 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             # print(model(input).data.cpu().numpy())
             # print(model(input).data.cpu().numpy().shape)
             pred_scores = model(input).data.cpu().numpy().reshape(1, -1)[0]
-            pred_scores_all += pred_scores
+            pred_scores_all = np.concatenate((pred_scores_all, pred_scores), axis=0)
+            # pred_scores_all += pred_scores.tolist()
 
         rho = spearmanr(true_scores, pred_scores)[0]
         pcc = pearsonr(true_scores, pred_scores)[0]
@@ -220,7 +222,7 @@ def test_rewarder(vec_list, human_scores, model, device, print):
         fig, ax = plt.subplots()
 
         unique = np.sort(np.unique(true_scores_all))
-        data_to_plot = [pred_scores[true_scores_all == true_scores_all] for true_score in unique]
+        data_to_plot = [pred_scores_all[true_score == true_scores_all] for true_score in unique]
 
         ax.violinplot(data_to_plot, showmeans=False, showmedians=True)
         ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all)
