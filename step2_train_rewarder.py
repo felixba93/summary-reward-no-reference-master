@@ -237,6 +237,7 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
 
         xticklabels = true_scores_all
         ax.set_xticks(true_scores_all)
+        print("violin plot written to: %s"%plot_file)
         plt.savefig(plot_file)
 
     return results
