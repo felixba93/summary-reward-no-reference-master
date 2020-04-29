@@ -309,9 +309,10 @@ if __name__ == '__main__':
 
         pcc_list = []
         weights_list = []
+
         for ii in range(epoch_num + 1):
             print('\n=====EPOCH {}====='.format(ii))
-            if epoch_num == 0:
+            if ii == 0:
 
                 # do not train in epoch 0, just evaluate the performance of the randomly initialized model (sanity check and baseline)
                 loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size,
@@ -327,24 +328,29 @@ if __name__ == '__main__':
 
             csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss_train,
                        loss_dev, loss_test]
-            print('--> loss', loss_train)
+            print('--> losses (train,dev,test)', loss_train, loss_dev, loss_test)
 
+            # Train-Data only
+            print("==Train==")
+            results_train = test_rewarder(all_vec_dic, train, deep_model, device)
+            for metric in results_train:
+                print('{}\t{}'.format(metric, np.mean(results_train[metric])))
+                csv_row.append(np.mean(results_train[metric]))
+
+            print("==Dev==")
             results = test_rewarder(all_vec_dic, dev, deep_model, device)
             for metric in results:
                 print('{}\t{}'.format(metric, np.mean(results[metric])))
                 csv_row.append(np.mean(results[metric]))
 
             # Test-Data only
+            print("==Test==")
             results_test = test_rewarder(all_vec_dic, test, deep_model, device)
             for metric in results_test:
                 print('{}\t{}'.format(metric, np.mean(results_test[metric])))
                 csv_row.append(np.mean(results_test[metric]))
 
-            # Train-Data only
-            results_train = test_rewarder(all_vec_dic, train, deep_model, device)
-            for metric in results_train:
-                print('{}\t{}'.format(metric, np.mean(results_train[metric])))
-                csv_row.append(np.mean(results_train[metric]))
+
 
             writer.writerow(csv_row)
             pcc_list.append(np.mean(results['pcc']))
