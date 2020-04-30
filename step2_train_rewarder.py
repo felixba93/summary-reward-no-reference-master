@@ -12,6 +12,7 @@ from scipy.stats import spearmanr, pearsonr, kendalltau
 import math
 from torchvision import models
 from resources import MODEL_WEIGHT_DIR
+from resources import OUTPUTS_DIR
 from matplotlib import pyplot as plt
 import csv
 
@@ -169,7 +170,7 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
     return np.mean(loss_list)
 
 
-def test_rewarder(vec_list, human_scores, model, device, print):
+def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
     results = {'rho': [], 'pcc': [], 'tau': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
     true_scores_all = []
     pred_scores_all = np.array([])
@@ -210,29 +211,34 @@ def test_rewarder(vec_list, human_scores, model, device, print):
             results['rho'].append(rho)
             results['pcc'].append(pcc)
             results['tau'].append(tau)
-        rho = spearmanr(true_scores_all, pred_scores_all)[0]
-        pcc = pearsonr(true_scores_all, pred_scores_all)[0]
-        tau = kendalltau(true_scores_all, pred_scores_all)[0]
-        if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
-            results['rho_global'].append(rho)
-            results['pcc_global'].append(pcc)
-            results['tau_global'].append(tau)
+    rho = spearmanr(true_scores_all, pred_scores_all)[0]
+    pcc = pearsonr(true_scores_all, pred_scores_all)[0]
+    tau = kendalltau(true_scores_all, pred_scores_all)[0]
+    if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
+        results['rho_global'].append(rho)
+        results['pcc_global'].append(pcc)
+        results['tau_global'].append(tau)
 
-    if print:
+    if plot_file is not None:
         fig, ax = plt.subplots()
+
+        #true_scores_all=np.array(true_scores_all)
+        #pred_scores_all=np.array(pred_scores_all)
 
         unique = np.sort(np.unique(true_scores_all))
         data_to_plot = [pred_scores_all[true_score == true_scores_all] for true_score in unique]
 
-        ax.violinplot(data_to_plot, showmeans=False, showmedians=True)
-        ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all)
-        ax.set_title('BetterRewards')
-        ax.set_xlabel('true_scores_all')
-        ax.set_ylabel('pred_scores_all')
+        # bw_methods determines how soft the distribution curve will be. lower values are more sharp
+        ax.violinplot(data_to_plot, showmeans=True, showmedians=True,bw_method=0.2)
+        ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all, marker=".", s=3, alpha=0.5)
+        ax.set_title('Comparison and distributions of true values to predicted score')
+        ax.set_xlabel('true scores')
+        ax.set_ylabel('predicted scores')
 
         xticklabels = true_scores_all
         ax.set_xticks(true_scores_all)
-        plt.savefig('BetterRewards_Violin.pdf')
+        print("violin plot written to: %s"%plot_file)
+        plt.savefig(plot_file)
 
     return results
 
@@ -303,9 +309,10 @@ if __name__ == '__main__':
 
         pcc_list = []
         weights_list = []
+
         for ii in range(epoch_num + 1):
             print('\n=====EPOCH {}====='.format(ii))
-            if epoch_num == 0:
+            if ii == 0:
 
                 # do not train in epoch 0, just evaluate the performance of the randomly initialized model (sanity check and baseline)
                 loss_train = pair_train_rewarder(all_vec_dic, train_pairs, deep_model, optimiser, True, batch_size,
@@ -321,24 +328,29 @@ if __name__ == '__main__':
 
             csv_row = [seed, learn_rate, model_type, len(train_pairs), len(dev_pairs), len(test_pairs), ii, loss_train,
                        loss_dev, loss_test]
-            print('--> loss', loss_train)
+            print('--> losses (train,dev,test)', loss_train, loss_dev, loss_test)
 
-            results = test_rewarder(all_vec_dic, dev, deep_model, device, False)
+            # Train-Data only
+            print("==Train==")
+            results_train = test_rewarder(all_vec_dic, train, deep_model, device)
+            for metric in results_train:
+                print('{}\t{}'.format(metric, np.mean(results_train[metric])))
+                csv_row.append(np.mean(results_train[metric]))
+
+            print("==Dev==")
+            results = test_rewarder(all_vec_dic, dev, deep_model, device)
             for metric in results:
                 print('{}\t{}'.format(metric, np.mean(results[metric])))
                 csv_row.append(np.mean(results[metric]))
 
             # Test-Data only
-            results_test = test_rewarder(all_vec_dic, test, deep_model, device, False)
+            print("==Test==")
+            results_test = test_rewarder(all_vec_dic, test, deep_model, device)
             for metric in results_test:
                 print('{}\t{}'.format(metric, np.mean(results_test[metric])))
                 csv_row.append(np.mean(results_test[metric]))
 
-            # Train-Data only
-            results_train = test_rewarder(all_vec_dic, train, deep_model, device, False)
-            for metric in results_train:
-                print('{}\t{}'.format(metric, np.mean(results_train[metric])))
-                csv_row.append(np.mean(results_train[metric]))
+
 
             writer.writerow(csv_row)
             pcc_list.append(np.mean(results['pcc']))
@@ -349,13 +361,18 @@ if __name__ == '__main__':
         print('\n======Best results come from epoch no. {}====='.format(idx))
 
         deep_model.load_state_dict(weights_list[idx])
-        test_results = test_rewarder(all_vec_dic, test, deep_model, device, True)
+        output_pattern='batch{}_{}_trainPercent{}_seed{}_lrate{}_{}_epoch{}'.format(
+            batch_size, train_type, train_percent, seed, learn_rate, model_type,epoch_num
+        )
+        test_results = test_rewarder(all_vec_dic, test, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTest.pdf'))
+        test_rewarder(all_vec_dic, train, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTrain.pdf'))
+        test_rewarder(all_vec_dic, dev, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onDev.pdf'))
         print('Its performance on the test set is:')
         for metric in test_results:
             print('{}\t{}'.format(metric, np.mean(test_results[metric])))
         model_weight_name = 'pcc{0:.4f}_'.format(np.mean(test_results['pcc']))
-        model_weight_name += 'epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
-            epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
+        model_weight_name += 'seed{}_epoch{}_batch{}_{}_trainPercent{}_lrate{}_{}.model'.format(
+            seed, epoch_num, batch_size, train_type, train_percent, learn_rate, model_type
         )
 
         torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
