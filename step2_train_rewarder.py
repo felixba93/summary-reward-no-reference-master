@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 import numpy as np
 import os
+from os import path
 import argparse
 import random
 import copy
@@ -222,22 +223,23 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
     if plot_file is not None:
         fig, ax = plt.subplots()
 
-        #true_scores_all=np.array(true_scores_all)
-        #pred_scores_all=np.array(pred_scores_all)
+        # true_scores_all=np.array(true_scores_all)
+        # pred_scores_all=np.array(pred_scores_all)
 
         unique = np.sort(np.unique(true_scores_all))
         data_to_plot = [pred_scores_all[true_score == true_scores_all] for true_score in unique]
 
         # bw_methods determines how soft the distribution curve will be. lower values are more sharp
-        ax.violinplot(data_to_plot, showmeans=True, showmedians=True,bw_method=0.2)
-        ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all, marker=".", s=3, alpha=0.5)
+        ax.violinplot(data_to_plot, showmeans=True, showmedians=True, bw_method=0.2)
+        ax.scatter(true_scores_all + np.random.normal(0, 0.1, pred_scores_all.shape[0]), pred_scores_all, marker=".",
+                   s=3, alpha=0.5)
         ax.set_title('Comparison and distributions of true values to predicted score')
         ax.set_xlabel('true scores')
         ax.set_ylabel('predicted scores')
 
         xticklabels = true_scores_all
         ax.set_xticks(true_scores_all)
-        print("violin plot written to: %s"%plot_file)
+        print("violin plot written to: %s" % plot_file)
         plt.savefig(plot_file)
 
     return results
@@ -254,13 +256,14 @@ def parse_args():
     ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='linear')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
     ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
+    ap.add_argument('-fn', '--file_name', type=str, help='file name for csv output', default='BetterRewardsStatistics.csv')
 
     args = ap.parse_args()
-    return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed
+    return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed, args.file_name
 
 
 if __name__ == '__main__':
-    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed = parse_args()
+    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed, file_name = parse_args()
 
     print('\n=====Arguments====')
     print('epoch num {}'.format(epoch_num))
@@ -272,11 +275,23 @@ if __name__ == '__main__':
     print('model type {}'.format(model_type))
     print('device {}'.format(device))
     print('seed {}'.format(seed))
+    print('file name {}'.format(file_name))
     print('=====Arguments====\n')
 
-    with open('BetterRewardsStatistics_v4.csv', 'a') as csv_file:
+    csv_column_names = ['seed', 'learn_rate', 'model_type', 'train_pairs', 'dev_pairs', 'test_pairs', 'epoch_num', 'loss_train', 'loss_dev', 'loss_test', 'rho_dev', 'pcc_dev', 'tau_dev', 'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'pcc_test', 'tau_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global', 'rho_train', 'pcc_train', 'tau_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global\n']
+
+    # check if csv_file exists
+    if path.exists(file_name):
+        csv_exists = True
+    else:
+        csv_exists = False
+
+    with open(file_name, 'a') as csv_file:
         writer = csv.writer(csv_file)
 
+        # if a new csv_file is generated, write column names
+        if csv_exists is False:
+            writer.writerow(csv_column_names)
         np.random.seed(seed=seed)
         random.seed(seed)
         torch.random.manual_seed(seed)
@@ -350,8 +365,6 @@ if __name__ == '__main__':
                 print('{}\t{}'.format(metric, np.mean(results_test[metric])))
                 csv_row.append(np.mean(results_test[metric]))
 
-
-
             writer.writerow(csv_row)
             pcc_list.append(np.mean(results['pcc']))
             weights_list.append(copy.deepcopy(deep_model.state_dict()))
@@ -361,12 +374,14 @@ if __name__ == '__main__':
         print('\n======Best results come from epoch no. {}====='.format(idx))
 
         deep_model.load_state_dict(weights_list[idx])
-        output_pattern='batch{}_{}_trainPercent{}_seed{}_lrate{}_{}_epoch{}'.format(
-            batch_size, train_type, train_percent, seed, learn_rate, model_type,epoch_num
+        output_pattern = 'batch{}_{}_trainPercent{}_seed{}_lrate{}_{}_epoch{}'.format(
+            batch_size, train_type, train_percent, seed, learn_rate, model_type, epoch_num
         )
-        test_results = test_rewarder(all_vec_dic, test, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTest.pdf'))
-        test_rewarder(all_vec_dic, train, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onTrain.pdf'))
-        test_rewarder(all_vec_dic, dev, deep_model, device, os.path.join(OUTPUTS_DIR,output_pattern+'_onDev.pdf'))
+        test_results = test_rewarder(all_vec_dic, test, deep_model, device,
+                                     os.path.join(OUTPUTS_DIR, output_pattern + '_onTest.pdf'))
+        test_rewarder(all_vec_dic, train, deep_model, device,
+                      os.path.join(OUTPUTS_DIR, output_pattern + '_onTrain.pdf'))
+        test_rewarder(all_vec_dic, dev, deep_model, device, os.path.join(OUTPUTS_DIR, output_pattern + '_onDev.pdf'))
         print('Its performance on the test set is:')
         for metric in test_results:
             print('{}\t{}'.format(metric, np.mean(test_results[metric])))
