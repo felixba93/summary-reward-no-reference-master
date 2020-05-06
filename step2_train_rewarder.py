@@ -172,7 +172,7 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
 
 
 def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
-    results = {'rho': [], 'pcc': [], 'tau': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
+    results = {'rho': [], 'rho_p': [], 'pcc': [], 'pcc_p': [], 'tau': [], 'tau_p': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
     true_scores_all = []
     pred_scores_all = np.array([])
     # pred_scores_all = []
@@ -205,9 +205,9 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
             pred_scores_all = np.concatenate((pred_scores_all, pred_scores), axis=0)
             # pred_scores_all += pred_scores.tolist()
 
-        rho, rho_p = spearmanr(true_scores, pred_scores)[0]
-        pcc, pcc_p = pearsonr(true_scores, pred_scores)[0]
-        tau, tau_p = kendalltau(true_scores, pred_scores)[0]
+        rho, rho_p = spearmanr(true_scores, pred_scores)
+        pcc, pcc_p = pearsonr(true_scores, pred_scores)
+        tau, tau_p = kendalltau(true_scores, pred_scores)
         if not (math.isnan(rho) or math.isnan(pcc) or math.isnan(tau)):
             results['rho'].append(rho)
             results['rho_p'].append(rho_p)
