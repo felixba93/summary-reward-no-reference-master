@@ -1,3 +1,4 @@
+import sys
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -248,7 +249,7 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
     return results
 
 
-def parse_args():
+def parse_args(argv):
     ap = argparse.ArgumentParser("arguments for summary sampler")
     ap.add_argument('-e', '--epoch_num', type=int, default=50)
     ap.add_argument('-b', '--batch_size', type=int, default=32)
@@ -261,12 +262,12 @@ def parse_args():
     ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
     ap.add_argument('-fn', '--file_name', type=str, help='file name for csv output', default='BetterRewardsStatistics.csv')
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed, args.file_name
 
 
-if __name__ == '__main__':
-    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed, file_name = parse_args()
+def main(argv):
+    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed, file_name = parse_args(argv[1:])
 
     print('\n=====Arguments====')
     print('epoch num {}'.format(epoch_num))
@@ -283,7 +284,7 @@ if __name__ == '__main__':
 
     csv_column_names = ['seed', 'learn_rate', 'model_type', 'train_pairs', 'dev_pairs', 'test_pairs', 'epoch_num', 'loss_train', 'loss_dev', 'loss_test', 'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
                         'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global',
-                        'rho_train', 'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global\n']
+                        'rho_train', 'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global']
 
     # check if csv_file exists
     if path.exists(file_name):
@@ -397,3 +398,6 @@ if __name__ == '__main__':
 
         torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
         print('\nbest model weight saved to: {}'.format(os.path.join(MODEL_WEIGHT_DIR, model_weight_name)))
+
+if __name__ == '__main__':
+    main(sys.argv)
