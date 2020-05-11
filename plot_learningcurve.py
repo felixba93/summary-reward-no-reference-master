@@ -16,13 +16,13 @@ if __name__ == '__main__':
     input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
 
     # ===here you can include or exclude some cols beforehand
-    col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test',
-       'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
-       'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test',
-       'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test',
-       'rho_test_global', 'pcc_test_global', 'tau_test_global', 'rho_train',
-       'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train',
-       'rho_train_global', 'pcc_train_global', 'tau_train_global']
+    col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test', 'rho_train',
+                             'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train',
+                             'rho_train_global', 'pcc_train_global', 'tau_train_global',
+                             'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
+                             'rho_dev_global', 'pcc_dev_global', 'tau_dev_global',
+                             'rho_test', 'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test',
+                             'rho_test_global', 'pcc_test_global', 'tau_test_global']
 
     # ===include or exclude like you want
 
