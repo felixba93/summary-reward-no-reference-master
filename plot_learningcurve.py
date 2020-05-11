@@ -38,8 +38,8 @@ if __name__ == '__main__':
 
 
     # ===do a scatter plot (preferable if more than one series per curve, i.e., ungrouped data) or line plot
-    scatterPlot=True
-    #scatterPlot = False
+    #scatterPlot=True
+    scatterPlot = False
 
     cols = sorted(list(set(cols)))
     data = pandas.read_csv(input_csv)
@@ -52,14 +52,14 @@ if __name__ == '__main__':
     print(data.columns)
 
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
-    #data=data[data["seed"]==2] #use this if you only want to plot one of the seeds
+    data=data[data["seed"]==2] #use this if you only want to plot one of the seeds
     data=data[data["learn_rate"]==0.0003] #use this if you only want to plot one of the seeds
-    data = data[data['model_type'] == 'linear']
+    #data = data[data['model_type'] == 'linear']
     data=data[data['epoch_num'] != 0] # remove the 0th epoch, which is the one which is random
 
     # === this makes sense for averaging over several seeds, for instance
-    group_over_episode = True
-    #group_over_episode=False
+    #group_over_episode = True
+    group_over_episode=False
 
     # ===do the grouping
     if group_over_episode:

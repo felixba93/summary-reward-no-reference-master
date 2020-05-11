@@ -12,7 +12,7 @@ if __name__ == '__main__':
     model_types = ['linear', 'deep']
     #    device = 'gpu'
     device = 'cpu'
-    seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    seeds = [1, 2, 3, 4, 5]
     file_name = 'all_preferences_intra-topic_w-ties.csv'
 
     # compute all combinations

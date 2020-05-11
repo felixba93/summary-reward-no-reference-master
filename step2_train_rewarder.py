@@ -283,8 +283,7 @@ def main(argv):
     print('=====Arguments====\n')
 
     csv_column_names = ['seed', 'learn_rate', 'model_type', 'train_pairs', 'dev_pairs', 'test_pairs', 'epoch_num', 'loss_train', 'loss_dev', 'loss_test', 'rho_train', 'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global', 'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
-                        'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global',
-                        ]
+                        'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global']
 
     # check if csv_file exists
     if path.exists(file_name):
@@ -292,7 +291,7 @@ def main(argv):
     else:
         csv_exists = False
 
-    with open(file_name, 'a') as csv_file:
+    with open(file_name, 'a', newline='') as csv_file:
         writer = csv.writer(csv_file)
 
         # if a new csv_file is generated, write column names
