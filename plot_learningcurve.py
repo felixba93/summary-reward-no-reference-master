@@ -13,7 +13,7 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-    input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
+    input_csv = 'outputs/all_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-5/all_preferences_intra-topic_w-ties_seed12345_best_loss_dev.csv'
 
     # ===here you can include or exclude some cols beforehand
     col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test', 'rho_train',
@@ -52,8 +52,8 @@ if __name__ == '__main__':
     print(data.columns)
 
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
-    data=data[data["seed"]==2] #use this if you only want to plot one of the seeds
-    data=data[data["learn_rate"]==0.0003] #use this if you only want to plot one of the seeds
+    #data=data[data["seed"]==2] #use this if you only want to plot one of the seeds
+    #data=data[data["learn_rate"]==0.0003] #use this if you only want to plot one of the seeds
     #data = data[data['model_type'] == 'linear']
     data=data[data['epoch_num'] != 0] # remove the 0th epoch, which is the one which is random
 

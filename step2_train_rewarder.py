@@ -142,6 +142,53 @@ def build_pairs(entries):
     return pair_list
 
 
+def build_pairs_majority_preferences(entries, sorted_scores):
+    pair_list = []
+    topic_count = 0
+    summ_count = 0
+    entries_text = {}
+    # get summary text and matching id
+    for article_id, scores_list in tqdm(sorted_scores.items()):
+        temp_entry = {}
+        summ_ids = [s['summ_id'] for s in scores_list]
+        for sid in summ_ids:
+            # get summary text
+            s_text = [s['sys_summ'] for s in scores_list if s['summ_id'] == sid][0]
+            temp_entry['sys_summ' + repr(sid)] = s_text
+        # save in dictionary
+        entries_text[article_id] = temp_entry
+
+    for article_id in entries:
+        entry = entries[article_id]
+        summ_ids = list(entry.keys())
+
+        for i in range(len(summ_ids) - 1):
+            for j in range(1, len(summ_ids)):
+                # run through dictionary containing summ_ids and matching text
+                for key, value in entries_text[article_id].items():
+                    # get text for current summaries i and j
+                    if key == summ_ids[i]:
+                        text_i = value
+                    elif key == summ_ids[j]:
+                        text_j = value
+                # check if text is identical, if yes skip
+                if text_i == text_j:
+                    # print("DUPLICATE FOUND: TEXT i", text_i, "TEXT j", text_i)
+                    continue
+                elif entry[summ_ids[i]] > entry[summ_ids[j]]:
+                    pref = [1, 0]
+                elif entry[summ_ids[i]] < entry[summ_ids[j]]:
+                    pref = [0, 1]
+                else:
+                    pref = [0.5, 0.5]
+                pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
+        topic_count += 1
+        summ_count = summ_count + len(summ_ids)
+    print("topics", topic_count)
+    print("summ", summ_count)
+    return pair_list
+
+
 def build_pair_vecs(vecs, pairs):
     pair_vec_list = []
     for aid, sid1, sid2, _ in pairs:
@@ -173,7 +220,8 @@ def pair_train_rewarder(vec_dic, pairs, deep_model, optimiser, loss_only, batch_
 
 
 def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
-    results = {'rho': [], 'rho_p': [], 'pcc': [], 'pcc_p': [], 'tau': [], 'tau_p': [], 'rho_global': [], 'pcc_global': [], 'tau_global': []}
+    results = {'rho': [], 'rho_p': [], 'pcc': [], 'pcc_p': [], 'tau': [], 'tau_p': [], 'rho_global': [],
+               'pcc_global': [], 'tau_global': []}
     true_scores_all = []
     pred_scores_all = np.array([])
     # pred_scores_all = []
@@ -260,14 +308,16 @@ def parse_args(argv):
     ap.add_argument('-mt', '--model_type', type=str, help='deep/linear', default='linear')
     ap.add_argument('-dv', '--device', type=str, help='cpu/gpu', default='gpu')
     ap.add_argument('-se', '--seed', type=int, help='random seed number', default='1')
-    ap.add_argument('-fn', '--file_name', type=str, help='file name for csv output', default='BetterRewardsStatistics.csv')
+    ap.add_argument('-fn', '--file_name', type=str, help='file name for csv output',
+                    default='BetterRewardsStatistics.csv')
 
     args = ap.parse_args(argv)
     return args.epoch_num, args.batch_size, args.train_type, args.train_percent, args.dev_percent, args.learn_rate, args.model_type, args.device, args.seed, args.file_name
 
 
 def main(argv):
-    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed, file_name = parse_args(argv[1:])
+    epoch_num, batch_size, train_type, train_percent, dev_percent, learn_rate, model_type, device, seed, file_name = parse_args(
+        argv[1:])
 
     print('\n=====Arguments====')
     print('epoch num {}'.format(epoch_num))
@@ -282,8 +332,12 @@ def main(argv):
     print('file name {}'.format(file_name))
     print('=====Arguments====\n')
 
-    csv_column_names = ['seed', 'learn_rate', 'model_type', 'train_pairs', 'dev_pairs', 'test_pairs', 'epoch_num', 'loss_train', 'loss_dev', 'loss_test', 'rho_train', 'rho_p_train', 'pcc_train', 'pcc_p_train', 'tau_train', 'tau_p_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global', 'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
-                        'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'rho_p_test', 'pcc_test', 'pcc_p_test', 'tau_test', 'tau_p_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global']
+    csv_column_names = ['seed', 'learn_rate', 'model_type', 'train_pairs', 'dev_pairs', 'test_pairs', 'epoch_num',
+                        'loss_train', 'loss_dev', 'loss_test', 'rho_train', 'rho_p_train', 'pcc_train', 'pcc_p_train',
+                        'tau_train', 'tau_p_train', 'rho_train_global', 'pcc_train_global', 'tau_train_global',
+                        'rho_dev', 'rho_p_dev', 'pcc_dev', 'pcc_p_dev', 'tau_dev', 'tau_p_dev',
+                        'rho_dev_global', 'pcc_dev_global', 'tau_dev_global', 'rho_test', 'rho_p_test', 'pcc_test',
+                        'pcc_p_test', 'tau_test', 'tau_p_test', 'rho_test_global', 'pcc_test_global', 'tau_test_global']
 
     # check if csv_file exists
     if path.exists(file_name):
@@ -318,9 +372,16 @@ def main(argv):
         sorted_scores = read_sorted_scores()
         train, dev, test, all = parse_split_data(sorted_scores, train_percent, dev_percent)
 
-        train_pairs = build_pairs(train)
-        dev_pairs = build_pairs(dev)
-        test_pairs = build_pairs(test)
+        # without majority preferences
+        # train_pairs = build_pairs(train)
+        # dev_pairs = build_pairs(dev)
+        # test_pairs = build_pairs(test)
+
+        # with majority preferences
+        train_pairs = build_pairs_majority_preferences(train, sorted_scores)
+        dev_pairs = build_pairs_majority_preferences(dev, sorted_scores)
+        test_pairs = build_pairs_majority_preferences(test, sorted_scores)
+
         print(len(train_pairs), len(dev_pairs), len(test_pairs))
 
         # read bert vectors
@@ -397,6 +458,7 @@ def main(argv):
 
         torch.save(weights_list[idx], os.path.join(MODEL_WEIGHT_DIR, model_weight_name))
         print('\nbest model weight saved to: {}'.format(os.path.join(MODEL_WEIGHT_DIR, model_weight_name)))
+
 
 if __name__ == '__main__':
     main(sys.argv)
