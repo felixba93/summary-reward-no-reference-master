@@ -30,7 +30,7 @@ def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'
         entry = {}
         summ_ids = [s['summ_id'] for s in scores_list]
         for sid in summ_ids:
-            entry['sys_summ' + repr(sid)] = [s['scores'][prompt] for s in scores_list if s['summ_id'] == sid][0]
+            entry['sys_summ' + repr(sid)] = [s['scores'][prompt] for s in scores_list if s['summ_id'] == sid][0] #that can be done more efficiently, but who cares...
 
         rand = random.random()
         all[article_id] = entry
@@ -142,7 +142,7 @@ def build_pairs(entries):
     return pair_list
 
 
-def build_pairs_majority_preferences(entries, sorted_scores):
+def build_pairs_majority_preferences(entries, sorted_scores, target_type='graded', ignore_ties=False, randomize_pref_order=False,double_prefs=False):
     pair_list = []
     topic_count = 0
     summ_count = 0
@@ -162,26 +162,78 @@ def build_pairs_majority_preferences(entries, sorted_scores):
         entry = entries[article_id]
         summ_ids = list(entry.keys())
 
+        #mapping from summary text to last summary id with that text. that's the one we will use
+        summ2id = {entries_text[article_id][summ_id]:summ_id for summ_id in summ_ids}
+
+        # put here the prefs for this article
+        article_prefs={}
+
+        #still run through all pairs
         for i in range(len(summ_ids) - 1):
             for j in range(1, len(summ_ids)):
                 # run through dictionary containing summ_ids and matching text
-                for key, value in entries_text[article_id].items():
+                #for key, value in entries_text[article_id].items():
                     # get text for current summaries i and j
-                    if key == summ_ids[i]:
-                        text_i = value
-                    elif key == summ_ids[j]:
-                        text_j = value
+                #    if key == summ_ids[i]:
+                #        text_i = value
+                #    elif key == summ_ids[j]:
+                #        text_j = value
+                text_i=entries_text[article_id][summ_ids[i]]
+                text_j=entries_text[article_id][summ_ids[j]]
                 # check if text is identical, if yes skip
                 if text_i == text_j:
                     # print("DUPLICATE FOUND: TEXT i", text_i, "TEXT j", text_i)
                     continue
-                elif entry[summ_ids[i]] > entry[summ_ids[j]]:
-                    pref = [1, 0]
-                elif entry[summ_ids[i]] < entry[summ_ids[j]]:
-                    pref = [0, 1]
+                # get the unique summ ids
+                unique_summ_id_pair=[summ2id[text_i],summ2id[text_j]]
+                # some debug output
+                if True:
+                    print("%s->%s vs. %s->%s"%(summ_ids[i],unique_summ_id_pair[0],summ_ids[j],unique_summ_id_pair[1]))
+                    full_entry=sorted_scores[article_id]
+                    print("  system %s with score %s (%s) vs." % (full_entry[i]['sys_name'],full_entry[i]['scores']['overall'],entry[summ_ids[i]]))
+                    print("  system %s with score %s (%s) vs." % (full_entry[j]['sys_name'], full_entry[j]['scores']['overall'], entry[summ_ids[j]]))
+                #unique_summ_id_pair.sort()
+                if entry[summ_ids[i]] > entry[summ_ids[j]]: pref = [1,0]
+                elif entry[summ_ids[i]] < entry[summ_ids[j]]: pref = [0,1]
+                else: pref = [0.5, 0.5]
+                #if entry[unique_summ_id_pair[0]] > entry[unique_summ_id_pair[1]]:
+                #    pref = [1, 0]
+                #elif entry[unique_summ_id_pair[0]] > entry[unique_summ_id_pair[1]]:
+                #    pref = [0, 1]
+                #else:
+                #    # todo we could completely ignore ties. doesnt change much. low prio
+                #    pref = [0.5, 0.5]
+                # sort the ids so that we get a unique key, so that (sys_summ0,sys_summ1) and (sys_summ1,sys_summ0) are the same
+                if unique_summ_id_pair[1]<unique_summ_id_pair[0]:
+                    unique_summ_id_pair=unique_summ_id_pair[::-1]
+                    pref=pref[::-1]
+                # convert to tuple, otherwise its not hashable for the dict
+                unique_summ_id_pair=tuple(unique_summ_id_pair)
+                # add up the pref to the total pref vector of the specific summary pair. create a new entry if not existing
+                article_prefs[unique_summ_id_pair]=article_prefs.get(unique_summ_id_pair,np.array([0,0]))+np.array(pref)
+        # transform to target
+        for unique_summ_id_pair,pref in article_prefs.items():
+            # depending on the mode, use binary target, or graded one
+            pref=(pref/(pref[0]+pref[1])).tolist()
+            if target_type=='binary':
+                if pref[0]>pref[1]:
+                    pref=[1,0]
+                elif pref[0]<pref[1]:
+                    pref=[1,0]
                 else:
                     pref = [0.5, 0.5]
-                pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
+            #skip if it is a tie and you want to ignore ties
+            if pref[0]!=0.5 or not ignore_ties:
+                # include the pref two times, once in one direction and once in the other direction
+                if double_prefs:
+                    pair_list.append((article_id, unique_summ_id_pair[1], unique_summ_id_pair[0], pref[::-1]))
+                    pair_list.append((article_id, unique_summ_id_pair[0], unique_summ_id_pair[1], pref))
+                else:
+                    #include the pref in the reverse order by chance. this might be necessary if there is a bias in the distribution of the score, e.g. if they are ordered
+                    if randomize_pref_order and bool(np.random.getrandbits(1)):
+                        pair_list.append((article_id, unique_summ_id_pair[1], unique_summ_id_pair[0], pref[::-1]))
+                    else:
+                        pair_list.append((article_id, unique_summ_id_pair[0], unique_summ_id_pair[1], pref))
         topic_count += 1
         summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
