@@ -46,6 +46,41 @@ def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'
 
     return train, dev, test, all
 
+def parse_split_data_balanced(sorted_scores, train_percent, dev_percent, prompt='overall'):
+    train = {}
+    dev = {}
+    test = {}
+    all = {}
+    topic_count = 0
+
+    article_ids = list(sorted_scores.keys())
+    random.shuffle(article_ids)
+    num_articles=len(article_ids)
+    train_ids=article_ids[0:int(train_percent*num_articles)]
+    dev_ids=article_ids[int(train_percent*num_articles):int((train_percent+dev_percent)*num_articles)]
+    #test_ids=article_ids[int((train_percent+dev_percent)*num_articles):]
+
+    for article_id, scores_list in tqdm(sorted_scores.items()):
+
+        entry = {}
+        summ_ids = [s['summ_id'] for s in scores_list]
+        for sid in summ_ids:
+            entry['sys_summ' + repr(sid)] = [s['scores'][prompt] for s in scores_list if s['summ_id'] == sid][0] #that can be done more efficiently, but who cares...
+
+#        rand = random.random()
+        all[article_id] = entry
+        if article_id in train_ids:
+            train[article_id] = entry
+        elif article_id in dev_ids:
+            dev[article_id] = entry
+        else:
+            test[article_id] = entry
+
+        topic_count += 1
+    print("topics in parse_split_data", topic_count)
+
+    return train, dev, test, all
+
 
 def build_model(model_type, vec_length, learn_rate=None):
     if 'linear' in model_type:
@@ -422,7 +457,8 @@ def main(argv):
 
         # read human scores and vectors for summaries/docs, and split the train/dev/test set
         sorted_scores = read_sorted_scores()
-        train, dev, test, all = parse_split_data(sorted_scores, train_percent, dev_percent)
+        #train, dev, test, all = parse_split_data(sorted_scores, train_percent, dev_percent)
+        train, dev, test, all = parse_split_data_balanced(sorted_scores, train_percent, dev_percent)
 
         # without majority preferences
         # train_pairs = build_pairs(train)
