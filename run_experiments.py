@@ -12,8 +12,8 @@ if __name__ == '__main__':
     model_types = ['linear', 'deep']
     #    device = 'gpu'
     device = 'cpu'
-    seeds = [6, 7]
-    file_name = 'all_preferences_intra-topic_w-ties_seed12345_lr000001.csv'
+    seeds = [8,9,10]
+    file_name = 'all_preferences_intra-topic_w-ties_seed8910.csv'
 
     # compute all combinations
     for learn_rate, model_type, seed in itertools.product(learn_rates, model_types, seeds):

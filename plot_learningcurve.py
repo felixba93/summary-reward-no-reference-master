@@ -13,7 +13,7 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-    input_csv = 'outputs/all_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-5/all_preferences_intra-topic_w-ties_seed12345_best_loss_dev.csv'
+    input_csv = 'outputs/all_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-5/all_preferences_intra-topic_w-ties_seed12345.csv'
 
     # ===here you can include or exclude some cols beforehand
     col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test', 'rho_train',
@@ -28,17 +28,16 @@ if __name__ == '__main__':
 
     cols = []
     # cols+=[col for col in col_names_of_measures] #take all
-    cols += [col for col in col_names_of_measures if 'loss' in col]  # take only the losses
+    cols += [col for col in col_names_of_measures if 'loss_dev' in col]  # take only the losses
     # cols+=[col for col in col_names_of_measures if 'rho' in col] #add rho
     # cols+=[col for col in col_names_of_measures if 'pcc' in col] #add pcc
-    cols+=[col for col in col_names_of_measures if 'tau' in col] #add kendall tau
+    # cols += [col for col in col_names_of_measures if 'tau' in col]  # add kendall tau
     # cols+=[col for col in col_names_of_measures if 'global' in col] #add global correlation measures
-    cols=[col for col in cols if 'global' not in col] #exclude the global measures
-    cols=[col for col in cols if '_p' not in col] #exclude the p-values
-
+    cols = [col for col in cols if 'global' not in col]  # exclude the global measures
+    cols = [col for col in cols if '_p' not in col]  # exclude the p-values
 
     # ===do a scatter plot (preferable if more than one series per curve, i.e., ungrouped data) or line plot
-    #scatterPlot=True
+    # scatterPlot=True
     scatterPlot = False
 
     cols = sorted(list(set(cols)))
@@ -52,14 +51,14 @@ if __name__ == '__main__':
     print(data.columns)
 
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
-    #data=data[data["seed"]==2] #use this if you only want to plot one of the seeds
-    #data=data[data["learn_rate"]==0.0003] #use this if you only want to plot one of the seeds
-    #data = data[data['model_type'] == 'linear']
-    data=data[data['epoch_num'] != 0] # remove the 0th epoch, which is the one which is random
+    data = data[data["seed"] == 1]  # use this if you only want to plot one of the seeds
+    data = data[data["learn_rate"] == 0.000001]  # use this if you only want to plot one of the seeds
+    data = data[data['model_type'] == 'deep']
+    data = data[data['epoch_num'] != 0]  # remove the 0th epoch, which is the one which is random
 
     # === this makes sense for averaging over several seeds, for instance
-    #group_over_episode = True
-    group_over_episode=False
+    # group_over_episode = True
+    group_over_episode = False
 
     # ===do the grouping
     if group_over_episode:
@@ -75,7 +74,7 @@ if __name__ == '__main__':
         ax = None
         colorcycle = []
         for col in cols:
-            print("plotting",col)
+            print("plotting", col)
             if len(colorcycle) == 0:
                 colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
             ax = data.plot(x=epochs_col, y=col, kind='scatter', color=colorcycle.pop(), label=col, ax=ax)
