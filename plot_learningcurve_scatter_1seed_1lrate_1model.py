@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     cols = []
     # cols+=[col for col in col_names_of_measures] #take all
-    cols += [col for col in col_names_of_measures if 'loss_dev' in col]  # take only the losses
+    cols += [col for col in col_names_of_measures if 'loss' in col]  # take only the losses
     # cols+=[col for col in col_names_of_measures if 'rho' in col] #add rho
     # cols+=[col for col in col_names_of_measures if 'pcc' in col] #add pcc
     # cols += [col for col in col_names_of_measures if 'tau' in col]  # add kendall tau
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     # group_over_episode = True
     group_over_episode = False
     # ===do a scatter plot (preferable if more than one series per curve, i.e., ungrouped data) or line plot
-    # scatterPlot = True
+    #scatterPlot = True
     scatterPlot = False
 
     cols = sorted(list(set(cols)))
@@ -72,6 +72,12 @@ if __name__ == '__main__':
     # cols=[data.columns[idx] for idx in show_col]
     #    print(len(data['epoch_num']))
     #    print(len(data['loss_test']))
+
+    #workaround if pandas does not recognize numeric values. just tries to convert everything to numeric
+    data = data.apply(pandas.to_numeric,errors='ignore')
+    # sometimes the rows are not sorted according to the epochs
+    data = data.sort_values(epochs_col)
+
     if scatterPlot:
         ax = None
         colorcycle = []
@@ -79,6 +85,7 @@ if __name__ == '__main__':
             print("plotting", col)
             if len(colorcycle) == 0:
                 colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+            #plt.scatter(data[epochs_col],data[col])
             ax = data.plot(x=epochs_col, y=col, kind='scatter', color=colorcycle.pop(), label=col, ax=ax)
     else:
         data.plot(x=epochs_col, y=cols, kind='line', grid=True)
