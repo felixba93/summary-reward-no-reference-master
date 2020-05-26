@@ -484,14 +484,14 @@ def main(argv):
         train, dev, test, all = parse_split_data_balanced(sorted_scores, train_percent, dev_percent)
 
         # without majority preferences
-        train_pairs = build_pairs(train)
-        dev_pairs = build_pairs(dev)
-        test_pairs = build_pairs(test)
+        # train_pairs = build_pairs(train)
+        # dev_pairs = build_pairs(dev)
+        # test_pairs = build_pairs(test)
 
         # with majority preferences
-        # train_pairs = build_pairs_majority_preferences(train, sorted_scores)
-        # dev_pairs = build_pairs_majority_preferences(dev, sorted_scores)
-        # test_pairs = build_pairs_majority_preferences(test, sorted_scores)
+        train_pairs = build_pairs_majority_preferences(train, sorted_scores)
+        dev_pairs = build_pairs_majority_preferences(dev, sorted_scores)
+        test_pairs = build_pairs_majority_preferences(test, sorted_scores)
 
         print(len(train_pairs), len(dev_pairs), len(test_pairs))
 

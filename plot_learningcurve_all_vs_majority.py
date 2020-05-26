@@ -13,7 +13,7 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-    input_csv = 'outputs/all_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-5/all_preferences_intra-topic_w-ties_seed12345.csv'
+    input_csv = 'outputs/majority_vs_all_seed1.csv'
 
     # ===here you can include or exclude some cols beforehand
     col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test', 'rho_train',
@@ -40,8 +40,8 @@ if __name__ == '__main__':
     # group_over_episode = True
     group_over_episode = False
     # ===do a scatter plot (preferable if more than one series per curve, i.e., ungrouped data) or line plot
-    #scatterPlot = True
-    scatterPlot = False
+    scatterPlot = True
+    # scatterPlot = False
 
     cols = sorted(list(set(cols)))
     data = pandas.read_csv(input_csv)
@@ -53,14 +53,12 @@ if __name__ == '__main__':
     print("the cleaned names")
     print(data.columns)
 
-
-
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
-    data = data[data["seed"] == 1]  # use this if you only want to plot one of the seeds
-    data = data[data["learn_rate"] == 0.000001]  # use this if you only want to plot one of the seeds
-    data = data[data['model_type'] == 'deep']
+    # data = data[data["preferences"] == 'all']  # use this if you only want to plot one of the preference methods
+    # data = data[data["seed"] == 1]  # use this if you only want to plot one of the seeds
+    # data = data[data["learn_rate"] == 0.000001]  # use this if you only want to plot one of the seeds
+    # data = data[data['model_type'] == 'linear']
     data = data[data['epoch_num'] != 0]  # remove the 0th epoch, which is the one which is random
-
 
     # ===do the grouping
     if group_over_episode:
@@ -73,8 +71,8 @@ if __name__ == '__main__':
     #    print(len(data['epoch_num']))
     #    print(len(data['loss_test']))
 
-    #workaround if pandas does not recognize numeric values. just tries to convert everything to numeric
-    data = data.apply(pandas.to_numeric,errors='ignore')
+    # workaround if pandas does not recognize numeric values. just tries to convert everything to numeric
+    data = data.apply(pandas.to_numeric, errors='ignore')
     # sometimes the rows are not sorted according to the epochs
     data = data.sort_values(epochs_col)
 
@@ -85,7 +83,7 @@ if __name__ == '__main__':
             print("plotting", col)
             if len(colorcycle) == 0:
                 colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-            #plt.scatter(data[epochs_col],data[col])
+            # plt.scatter(data[epochs_col],data[col])
             ax = data.plot(x=epochs_col, y=col, kind='scatter', color=colorcycle.pop(), label=col, ax=ax)
     else:
         data.plot(x=epochs_col, y=cols, kind='line', grid=True)
