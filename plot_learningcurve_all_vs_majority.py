@@ -13,8 +13,8 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-#    input_csv = 'outputs/majority_vs_all_seed1.csv'
-    input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
+    input_csv = 'outputs/majority_vs_all_seed1.csv'
+    # input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
 
     # ===here you can include or exclude some cols beforehand
     col_names_of_measures = ['loss_train', 'loss_dev', 'loss_test', 'rho_train',
@@ -26,8 +26,8 @@ if __name__ == '__main__':
                              'rho_test_global', 'pcc_test_global', 'tau_test_global']
 
     # categories for graphs. separate values according to these columns
-    #cat_cols=[] #do not differentiate, plot graphs only for different losses types (variable cols)
-    cat_cols=['model_type'] #use the model_type, i.e. differentiate between deep and linear
+    # cat_cols=[] #do not differentiate, plot graphs only for different losses types (variable cols)
+    cat_cols = ['model_type']  # use the model_type, i.e. differentiate between deep and linear
 
     # ===include or exclude like you want
 
@@ -84,14 +84,15 @@ if __name__ == '__main__':
     if scatterPlot:
         ax = None
         colorcycle = []
-        for cat in data[cat_cols].drop_duplicates().values if len(cat_cols)>0 else ['']:
-            cat_name=" ".join([str(temp) for temp in cat])
+        for cat in data[cat_cols].drop_duplicates().values if len(cat_cols) > 0 else ['']:
+            cat_name = " ".join([str(temp) for temp in cat])
             for col in cols:
-                print("plotting", cat,col)
+                print("plotting", cat, col)
                 if len(colorcycle) == 0:
                     colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
                 # plt.scatter(data[epochs_col],data[col])
-                ax = data.plot(x=epochs_col, y=col, kind='scatter', color=colorcycle.pop(), label=cat_name+' '+col, ax=ax)
+                ax = data.plot(x=epochs_col, y=col, kind='scatter', color=colorcycle.pop(), label=cat_name + ' ' + col,
+                               ax=ax)
     else:
         data.plot(x=epochs_col, y=cols, kind='line', grid=True)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
