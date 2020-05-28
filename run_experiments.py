@@ -3,7 +3,7 @@ import itertools
 from datetime import datetime
 
 if __name__ == '__main__':
-    epoch_num = 50
+    epoch_num = 500
     batch_size = 32
     # train_type = 'pairwise' #train type is pairwise or regression, but actually has no effect. it is always pairwise
     train_percent = 0.64
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     #    device = 'gpu'
     device = 'cpu'
     seeds = [1]
-    file_name = 'majority_preferences_intra-topic_w-ties_seed1_balanced.csv'
+    file_name = 'majority_intra-topic_w-ties_epoch_500_seed1_balanced.csv'
 
     # compute all combinations
     for learn_rate, model_type, seed in itertools.product(learn_rates, model_types, seeds):

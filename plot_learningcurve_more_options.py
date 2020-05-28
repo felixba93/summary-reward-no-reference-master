@@ -13,7 +13,7 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-    input_csv = 'outputs/majority_vs_all_seed1.csv'
+    input_csv = 'outputs/majority_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-10_balanced_epoch500/majority_intra-topic_w-ties_epoch_500_seed1_balanced.csv'
     # input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
 
     # ===here you can include or exclude some cols beforehand
@@ -27,9 +27,8 @@ if __name__ == '__main__':
 
     # ====categories for graphs. separate values according to these columns
     # cat_cols=[] #do not differentiate, plot graphs only for different losses types (variable cols)
-    cat_cols = ['preferences','model_type']  # use the model_type, i.e. differentiate between deep and linear
-
-
+    # cat_cols = ['preferences', 'model_type']  # use the model_type, i.e. differentiate between deep and linear
+    cat_cols = ['model_type']  # use the model_type, i.e. differentiate between deep and linear
     # ===include or exclude like you want
 
     cols = []
@@ -49,9 +48,9 @@ if __name__ == '__main__':
     scatterPlot = True
     # scatterPlot = False
 
-    #=== change the color/marker of the graphs for each graph ('always'), for each cat ('cat'), or each loss type ('loss')
-    color_change='cat'
-    marker_change='loss'
+    # === change the color/marker of the graphs for each graph ('always'), for each cat ('cat'), or each loss type ('loss')
+    color_change = 'cat'
+    marker_change = 'loss'
 
     cols = sorted(list(set(cols)))
     data = pandas.read_csv(input_csv)
@@ -66,7 +65,7 @@ if __name__ == '__main__':
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
     # data = data[data["preferences"] == 'all']  # use this if you only want to plot one of the preference methods
     data = data[data["seed"] == 1]  # use this if you only want to plot one of the seeds
-    # data = data[data["learn_rate"] == 0.000001]  # use this if you only want to plot one of the seeds
+    data = data[data["learn_rate"] == 0.1]  # use this if you only want to plot one of the seeds
     # data = data[data['model_type'] == 'linear']
     data = data[data['epoch_num'] != 0]  # remove the 0th epoch, which is the one which is random
 
@@ -87,39 +86,40 @@ if __name__ == '__main__':
     data = data.sort_values(epochs_col)
 
     ##all possible markers (if you really need to plot a lot)
-    #from matplotlib.lines import Line2D
-    #markers = [m for m, func in Line2D.markers.items() if func != 'nothing' ]
-    #some markers which you iterate over, see https://matplotlib.org/3.2.1/api/markers_api.html#module-matplotlib.markers
-    markers=['o','s','*','+','x','D','v','<','>','^','.']
+    # from matplotlib.lines import Line2D
+    # markers = [m for m, func in Line2D.markers.items() if func != 'nothing' ]
+    # some markers which you iterate over, see https://matplotlib.org/3.2.1/api/markers_api.html#module-matplotlib.markers
+    markers = ['o', 's', '*', '+', 'x', 'D', 'v', '<', '>', '^', '.']
 
     if scatterPlot:
         ax = None
         colorcycle = []
-        for catidx,cat in enumerate(data[cat_cols].drop_duplicates().values if len(cat_cols) > 0 else ['']):
+        for catidx, cat in enumerate(data[cat_cols].drop_duplicates().values if len(cat_cols) > 0 else ['']):
             cat_name = " ".join([str(temp) for temp in cat])
 
-            if color_change=='cat':
+            if color_change == 'cat':
                 if len(colorcycle) == 0:
                     colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
                 color = colorcycle.pop()
-            if color_change=='loss':
+            if color_change == 'loss':
                 colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-            for colidx,col in enumerate(cols):
+            for colidx, col in enumerate(cols):
                 print("plotting", cat, col)
-                data_temp=data
-                #bad hack because i do not know right now how to do it in one row
-                #select only the datapoints for the cat selected
-                for subcat in zip(cat_cols,cat):
-                    data_temp=data_temp[data_temp[subcat[0]]==subcat[1]]
-                if color_change=='always' or color_change=='loss':
-                    if len(colorcycle) == 0: #start with the cycle
+                data_temp = data
+                # bad hack because i do not know right now how to do it in one row
+                # select only the datapoints for the cat selected
+                for subcat in zip(cat_cols, cat):
+                    data_temp = data_temp[data_temp[subcat[0]] == subcat[1]]
+                if color_change == 'always' or color_change == 'loss':
+                    if len(colorcycle) == 0:  # start with the cycle
                         colorcycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
                     color = colorcycle.pop()
-                marker=markers[catidx] if marker_change=='cat' else markers[colidx]
+                marker = markers[catidx] if marker_change == 'cat' else markers[colidx]
                 # plt.scatter(data[epochs_col],data[col])
-                ax = data_temp.plot(x=epochs_col, y=col, kind='scatter', color=color, label=cat_name + ' ' + col, marker=marker,
-                               ax=ax)
+                ax = data_temp.plot(x=epochs_col, y=col, kind='scatter', color=color, label=cat_name + ' ' + col,
+                                    marker=marker,
+                                    ax=ax)
     else:
         data.plot(x=epochs_col, y=cols, kind='line', grid=True)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
