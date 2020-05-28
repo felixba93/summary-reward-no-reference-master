@@ -49,8 +49,8 @@ if __name__ == '__main__':
     # scatterPlot = False
 
     # === change the color/marker of the graphs for each graph ('always'), for each cat ('cat'), or each loss type ('loss')
-    color_change = 'cat'
-    marker_change = 'loss'
+    color_change = 'loss'
+    marker_change = 'cat'
 
     cols = sorted(list(set(cols)))
     data = pandas.read_csv(input_csv)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # ===query/constraints to select the rows for the plot (in the end, there should be rows==no epochs)
     # data = data[data["preferences"] == 'all']  # use this if you only want to plot one of the preference methods
     data = data[data["seed"] == 1]  # use this if you only want to plot one of the seeds
-    data = data[data["learn_rate"] == 0.1]  # use this if you only want to plot one of the seeds
+    data = data[data["learn_rate"] == 0.0001]  # use this if you only want to plot one of the seeds
     # data = data[data['model_type'] == 'linear']
     data = data[data['epoch_num'] != 0]  # remove the 0th epoch, which is the one which is random
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                 marker = markers[catidx] if marker_change == 'cat' else markers[colidx]
                 # plt.scatter(data[epochs_col],data[col])
                 ax = data_temp.plot(x=epochs_col, y=col, kind='scatter', color=color, label=cat_name + ' ' + col,
-                                    marker=marker,
+                                    marker=marker, s=2,
                                     ax=ax)
     else:
         data.plot(x=epochs_col, y=cols, kind='line', grid=True)
