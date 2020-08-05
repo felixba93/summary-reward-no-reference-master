@@ -42,7 +42,7 @@ for index, row in df.iterrows():
         sys_summ = file.read()
     # create entry
     entry['id'] = str(topic)
-    entry['ref'] = ""
+    entry['ref'] = "Reference-Summary"
     entry['sys_name'] = str(method)
     entry['sys_summ'] = sys_summ
     entry['scores'] = score_list
