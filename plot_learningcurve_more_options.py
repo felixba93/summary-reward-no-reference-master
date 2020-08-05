@@ -13,7 +13,7 @@ def clean_name(name):
 
 if __name__ == '__main__':
     # ===set the csv file name
-    input_csv = 'outputs/majority_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-10_balanced_epoch500/majority_intra-topic_w-ties_epoch_500_seed1_balanced.csv'
+    input_csv = 'outputs/majority_preferences_intra-topic_w-ties_lrate0.1-1e-0.6_seed1-10_balanced/majority_preferences_intra-topic_w-ties_seed1_balanced.csv'
     # input_csv = 'outputs/all_preferences_intra-topic_w-ties/all_preferences_intra-topic_w-ties.csv'
 
     # ===here you can include or exclude some cols beforehand

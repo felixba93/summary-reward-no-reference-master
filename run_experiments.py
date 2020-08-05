@@ -8,12 +8,12 @@ if __name__ == '__main__':
     # train_type = 'pairwise' #train type is pairwise or regression, but actually has no effect. it is always pairwise
     train_percent = 0.64
     dev_percent = 0.16
-    learn_rates = [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+    learn_rates = [0.001, 0.0001, 0.00001, 0.000001]
     model_types = ['linear', 'deep']
     #    device = 'gpu'
-    device = 'cpu'
-    seeds = [1]
-    file_name = 'majority_intra-topic_w-ties_epoch_500_seed1_balanced.csv'
+    device = 'gpu'
+    seeds = [1, 2, 3, 4, 5]
+    file_name = 'overall_likert_majority.csv'
 
     # compute all combinations
     for learn_rate, model_type, seed in itertools.product(learn_rates, model_types, seeds):
