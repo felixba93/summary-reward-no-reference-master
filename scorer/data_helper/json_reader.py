@@ -234,6 +234,11 @@ def read_sorted_scores():
     return json.load(open(sorted_scores_path, "r"))
 
 
+def read_pair_anno_scores():
+    pair_anno_scores_path = os.path.join(DATA_DIR, 'sumEval_pair_scores.json')
+    return json.load(open(pair_anno_scores_path, "r"))
+
+
 
 def read_samples(data_dir=PROCESSED_DATA_DIR):
     sample_file_path = os.path.join(data_dir, 'samples.jsonl.gz')

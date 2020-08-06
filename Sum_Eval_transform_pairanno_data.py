@@ -47,7 +47,7 @@ for index, row in df.iterrows():
     entry['sys_summ'] = sys_summ
     entry['scores'] = score_list
     entry['summ_id'] = 0
-    entry['rank'] = 0.0
+    entry['rank'] = 0
     # fill json structure
     # check if topic already exists
     if topic in json_data:

@@ -13,7 +13,7 @@ if __name__ == '__main__':
     #    device = 'gpu'
     device = 'gpu'
     seeds = [1, 2, 3, 4, 5]
-    file_name = 'overall_likert_majority.csv'
+    file_name = 'overall_pair_anno_majority.csv'
 
     # compute all combinations
     for learn_rate, model_type, seed in itertools.product(learn_rates, model_types, seeds):
