@@ -32,7 +32,7 @@ for index, row in df.iterrows():
     score_list['time'] = float(coherence)
     score_list['overall'] = float(quality)
     score_list['focus'] = float(focus)
-    score_list['redundancy'] = float(non_redundancy)
+    score_list['structure'] = float(structure)
     # read summary text
     with open("SumEval/data/summaries/" + str(method) + "/" + str(topic) + ".txt", 'r') as file:
         sys_summ = file.read()
@@ -43,7 +43,7 @@ for index, row in df.iterrows():
     entry['sys_summ'] = sys_summ
     entry['scores'] = score_list
     entry['summ_id'] = 0
-    entry['rank'] = quality
+    entry['rank'] = structure
     # fill json structure
     if topic in json_data:
         entry['summ_id'] = len(json_data[topic])
@@ -54,5 +54,5 @@ for index, row in df.iterrows():
         summ_list.append(entry)
         json_data[topic] = summ_list
 
-with open('SumEval/data/sorted_scores_sumEval.json', 'w') as write_file:
+with open('SumEval/data/sorted_scores_likert_structure.json', 'w') as write_file:
     json.dump(json_data, write_file)

@@ -176,72 +176,24 @@ def build_pairs(entries):
                 else:
                     pref = [0.5, 0.5]
                 pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
-                print(pair_list)
+                # print(pair_list)
         topic_count += 1
         summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
     print("summ", summ_count)
     return pair_list
 
-
-# randomize_pref_order and double_prefs are only relevant if the learning function learns f(s0,s1)=pref. in our case, we learn f(s0)=pref[0] and f(s1)=pref[1], so this should be set to False
-# noinspection DuplicatedCode
-def build_anno_pairs_majority_preferences(entries, sorted_scores, pair_anno_scores, target_type='graded',
-                                          ignore_ties=False,
-                                          randomize_pref_order=False, double_prefs=False):
+def build_anno_pairs(entries, pair_anno_scores):
     pair_list = []
     topic_count = 0
-    anno_count = 0
     summ_count = 0
-    entries_text = {}
-    # get summary text and matching id
-    for article_id, scores_list in tqdm(sorted_scores.items()):
-        temp_entry = {}
-        summ_ids = [s['summ_id'] for s in scores_list]
-        for sid in summ_ids:
-            # get summary text
-            s_text = [s['sys_summ'] for s in scores_list if s['summ_id'] == sid][0]
-            temp_entry['sys_summ' + repr(sid)] = s_text
-        # save in dictionary
-        entries_text[article_id] = temp_entry
-
     for article_id in entries:
         entry = entries[article_id]
         summ_ids = list(entry.keys())
-
-        # mapping from summary text to last summary id with that text. that's the one we will use
-        summ2id = {entries_text[article_id][summ_id]: summ_id for summ_id in summ_ids}
-
-        # put here the prefs for this article
-        article_prefs = {}
-
-        # still run through all pairs
         # really iterate over all pairs. there was an error here before since j started from 1, to prevent i,j=0,0. but this also lead to i,j=x,0 never be chosen the situation i=j is solved otherwise
         for i in range(len(summ_ids)):
             for j in range(len(summ_ids)):
-
-                text_i = entries_text[article_id][summ_ids[i]]
-                text_j = entries_text[article_id][summ_ids[j]]
-                # check if text is identical, if yes skip
-                if i == j or text_i == text_j:
-                    # print("DUPLICATE FOUND: TEXT i", text_i, "TEXT j", text_i)
-                    continue
-                # get the unique summ ids
-                unique_summ_id_pair = [summ2id[text_i], summ2id[text_j]]
-
-                # some debug output
-                # noinspection PyUnreachableCode
-                if False:
-                    print("%s vs. %s (IDs %s vs. %s)" % (
-                        summ_ids[i], summ_ids[j], unique_summ_id_pair[0], unique_summ_id_pair[1]))
-                    full_entry = sorted_scores[article_id]
-                    print("  system %s with score %s (%s) vs." % (
-                        full_entry[i]['sys_name'], full_entry[i]['scores']['overall'], entry[summ_ids[i]]))
-                    print("  system %s with score %s (%s)" % (
-                        full_entry[j]['sys_name'], full_entry[j]['scores']['overall'], entry[summ_ids[j]]))
-                    print(
-                        "  \"%s...\" vs. \"%s...\"" % (full_entry[i]['sys_summ'][:20], full_entry[j]['sys_summ'][:20]))
-
+                if i == j: continue
                 # get keys from dictionary
                 entry_keys = list(entry.keys())
 
@@ -251,67 +203,27 @@ def build_anno_pairs_majority_preferences(entries, sorted_scores, pair_anno_scor
 
                         if pair['pref'] == 1:
                             pref = [1, 0]
+                            continue
                         else:
                             pref = [0, 1]
+                            continue
 
                     else:
                         if pair['summ_id_j'] == int(entry_keys[i][8]) and pair['summ_id_i'] == int(entry_keys[j][8]):
 
                             if pair['pref'] == 1:
                                 pref = [0, 1]
+                                continue
                             else:
                                 pref = [1, 0]
-
-
-                # old code
-                # if entry[summ_ids[i]] > entry[summ_ids[j]]:
-                #    pref = [1, 0]
-                # elif entry[summ_ids[i]] < entry[summ_ids[j]]:
-                #    pref = [0, 1]
-                # else:
-                #    pref = [0.5, 0.5]
-
-                # sort the ids so that we get a unique key, so that (sys_summ0,sys_summ1) and (sys_summ1,sys_summ0) are the same
-                if unique_summ_id_pair[1] < unique_summ_id_pair[0]:
-                    unique_summ_id_pair = unique_summ_id_pair[::-1]
-                    pref = pref[::-1]
-                # convert to tuple, otherwise its not hashable for the dict
-                unique_summ_id_pair = tuple(unique_summ_id_pair)
-                # add up the pref to the total pref vector of the specific summary pair. create a new entry if not existing
-                article_prefs[unique_summ_id_pair] = article_prefs.get(unique_summ_id_pair,
-                                                                       np.array([0, 0])) + np.array(pref)
-        # transform to target
-        for unique_summ_id_pair, pref in article_prefs.items():
-            # depending on the mode, use binary target, or graded one
-            pref = (pref / (pref[0] + pref[1])).tolist()
-            if target_type == 'binary':
-                if pref[0] > pref[1]:
-                    pref = [1, 0]
-                elif pref[0] < pref[1]:
-                    pref = [1, 0]
-                else:
-                    pref = [0.5, 0.5]
-            # skip if it is a tie and you want to ignore ties
-            if pref[0] != 0.5 or not ignore_ties:
-                # include the pref two times, once in one direction and once in the other direction
-                if double_prefs:
-                    pair_list.append((article_id, unique_summ_id_pair[1], unique_summ_id_pair[0], pref[::-1]))
-                    pair_list.append((article_id, unique_summ_id_pair[0], unique_summ_id_pair[1], pref))
-                else:
-                    # include the pref in the reverse order by chance. this might be necessary if there is a bias in the distribution of the score, e.g. if they are ordered
-                    if randomize_pref_order and bool(random.getrandbits(1)):
-                        pair_list.append((article_id, unique_summ_id_pair[1], unique_summ_id_pair[0], pref[::-1]))
-                    else:
-                        pair_list.append((article_id, unique_summ_id_pair[0], unique_summ_id_pair[1], pref))
+                                continue
+                pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
+                # print(pair_list)
         topic_count += 1
-        anno_count += len(summ_ids)
-        summ_count += len(summ2id)
+        summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
-    print("annotations", anno_count)
     print("summ", summ_count)
-    print("summ pairs", len(pair_list))
     return pair_list
-
 
 # randomize_pref_order and double_prefs are only relevant if the learning function learns f(s0,s1)=pref. in our case, we learn f(s0)=pref[0] and f(s1)=pref[1], so this should be set to False
 def build_pairs_majority_preferences(entries, sorted_scores, target_type='graded', ignore_ties=False,
@@ -368,9 +280,9 @@ def build_pairs_majority_preferences(entries, sorted_scores, target_type='graded
                         summ_ids[i], summ_ids[j], unique_summ_id_pair[0], unique_summ_id_pair[1]))
                     full_entry = sorted_scores[article_id]
                     print("  system %s with score %s (%s) vs." % (
-                        full_entry[i]['sys_name'], full_entry[i]['scores']['overall'], entry[summ_ids[i]]))
+                        full_entry[i]['sys_name'], full_entry[i]['scores']['redundancy'], entry[summ_ids[i]]))
                     print("  system %s with score %s (%s)" % (
-                        full_entry[j]['sys_name'], full_entry[j]['scores']['overall'], entry[summ_ids[j]]))
+                        full_entry[j]['sys_name'], full_entry[j]['scores']['redundancy'], entry[summ_ids[j]]))
                     print(
                         "  \"%s...\" vs. \"%s...\"" % (full_entry[i]['sys_summ'][:20], full_entry[j]['sys_summ'][:20]))
                 # unique_summ_id_pair.sort()
@@ -479,6 +391,7 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
             # print(np.array(concat_vecs).shape, np.array(article_vec).shape, np.array(summ_vec).shape)
             concat_vecs.append(article_vec + summ_vec)
             # print(np.array(concat_vecs).shape)
+            # print(entry[summ_ids[i]])
             true_scores.append(entry[summ_ids[i]])
         true_scores_all += true_scores  # add scores for topic to list of all scores
         input = Variable(torch.from_numpy(np.array(concat_vecs)).float())
@@ -626,9 +539,9 @@ def main(argv):
         # test_pairs = build_pairs(test)
 
         # without majority preferences but with pair anno
-        # train_pairs = build_anno_pairs(train)
-        # dev_pairs = build_anno_pairs(dev)
-        # test_pairs = build_anno_pairs(test)
+        train_pairs = build_anno_pairs(train, pair_anno_scores)
+        dev_pairs = build_anno_pairs(dev, pair_anno_scores)
+        test_pairs = build_anno_pairs(test, pair_anno_scores)
 
         # with majority preferences
         # train_pairs = build_pairs_majority_preferences(train, sorted_scores)
@@ -636,9 +549,9 @@ def main(argv):
         # test_pairs = build_pairs_majority_preferences(test, sorted_scores)
 
         # with majority preferences and pair anno
-        train_pairs = build_anno_pairs_majority_preferences(train, sorted_scores, pair_anno_scores)
-        dev_pairs = build_anno_pairs_majority_preferences(dev, sorted_scores, pair_anno_scores)
-        test_pairs = build_anno_pairs_majority_preferences(test, sorted_scores, pair_anno_scores)
+        # train_pairs = build_anno_pairs_majority_preferences(train, sorted_scores, pair_anno_scores)
+        # dev_pairs = build_anno_pairs_majority_preferences(dev, sorted_scores, pair_anno_scores)
+        # test_pairs = build_anno_pairs_majority_preferences(test, sorted_scores, pair_anno_scores)
 
         print(len(train_pairs), len(dev_pairs), len(test_pairs))
 
