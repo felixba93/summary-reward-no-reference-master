@@ -183,6 +183,7 @@ def build_pairs(entries):
     print("summ", summ_count)
     return pair_list
 
+
 def build_anno_pairs(entries, pair_anno_scores):
     pair_list = []
     topic_count = 0
@@ -200,14 +201,12 @@ def build_anno_pairs(entries, pair_anno_scores):
                 # get pair preference from pair_anno_scores
                 for pair in pair_anno_scores[article_id]:
                     if pair['summ_id_i'] == int(entry_keys[i][8]) and pair['summ_id_j'] == int(entry_keys[j][8]):
-
                         if pair['pref'] == 1:
                             pref = [1, 0]
                             continue
                         else:
                             pref = [0, 1]
                             continue
-
                     else:
                         if pair['summ_id_j'] == int(entry_keys[i][8]) and pair['summ_id_i'] == int(entry_keys[j][8]):
 
@@ -223,7 +222,45 @@ def build_anno_pairs(entries, pair_anno_scores):
         summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
     print("summ", summ_count)
+    # print(pair_list)
     return pair_list
+
+
+def build_human_pair_scores(pair_list):
+    human_pair_scores = {}
+
+    for entry in pair_list:
+
+        article_id = str(entry[0])
+        sum_id_i = str(entry[1])
+        sum_id_j = str(entry[2])
+        pref = entry[3]
+
+        summ_entry = {}
+
+        if article_id in human_pair_scores:
+            if pref == [1, 0]:
+                if sum_id_i in human_pair_scores[article_id]:
+                    human_pair_scores[article_id][sum_id_i] + 1
+                else:
+                    human_pair_scores[article_id][sum_id_i] = 1
+            else:
+                if sum_id_j in human_pair_scores[article_id]:
+                    human_pair_scores[article_id][sum_id_j] + 1
+                else:
+                    human_pair_scores[article_id][sum_id_j] = 1
+
+        else:
+            if pref == [1, 0]:
+                summ_entry[sum_id_i] = 1
+                summ_entry[sum_id_j] = 0
+            else:
+                summ_entry[sum_id_i] = 0
+                summ_entry[sum_id_j] = 1
+            human_pair_scores[article_id] = summ_entry
+
+    return human_pair_scores
+
 
 # randomize_pref_order and double_prefs are only relevant if the learning function learns f(s0,s1)=pref. in our case, we learn f(s0)=pref[0] and f(s1)=pref[1], so this should be set to False
 def build_pairs_majority_preferences(entries, sorted_scores, target_type='graded', ignore_ties=False,
@@ -378,6 +415,7 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
                'pcc_global': [], 'tau_global': []}
     true_scores_all = []
     pred_scores_all = np.array([])
+    #print(human_scores)
     # pred_scores_all = []
     for article_id in human_scores:
         entry = human_scores[article_id]
@@ -553,6 +591,11 @@ def main(argv):
         # dev_pairs = build_anno_pairs_majority_preferences(dev, sorted_scores, pair_anno_scores)
         # test_pairs = build_anno_pairs_majority_preferences(test, sorted_scores, pair_anno_scores)
 
+        # build human pair scores for pairs
+        train_anno = build_human_pair_scores(train_pairs)
+        dev_anno = build_human_pair_scores(dev_pairs)
+        test_anno = build_human_pair_scores(test_pairs)
+
         print(len(train_pairs), len(dev_pairs), len(test_pairs))
 
         # read bert vectors
@@ -584,20 +627,23 @@ def main(argv):
 
             # Train-Data only
             print("==Train==")
-            results_train = test_rewarder(all_vec_dic, train, deep_model, device)
+            # results_train = test_rewarder(all_vec_dic, train, deep_model, device)
+            results_train = test_rewarder(all_vec_dic, train_anno, deep_model, device)
             for metric in results_train:
                 print('{}\t{}'.format(metric, np.mean(results_train[metric])))
                 csv_row.append(np.mean(results_train[metric]))
 
             print("==Dev==")
-            results = test_rewarder(all_vec_dic, dev, deep_model, device)
+            # results = test_rewarder(all_vec_dic, dev, deep_model, device)
+            results = test_rewarder(all_vec_dic, dev_anno, deep_model, device)
             for metric in results:
                 print('{}\t{}'.format(metric, np.mean(results[metric])))
                 csv_row.append(np.mean(results[metric]))
 
             # Test-Data only
             print("==Test==")
-            results_test = test_rewarder(all_vec_dic, test, deep_model, device)
+            # results_test = test_rewarder(all_vec_dic, test, deep_model, device)
+            results_test = test_rewarder(all_vec_dic, test_anno, deep_model, device)
             for metric in results_test:
                 print('{}\t{}'.format(metric, np.mean(results_test[metric])))
                 csv_row.append(np.mean(results_test[metric]))
