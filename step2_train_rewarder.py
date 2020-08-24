@@ -203,23 +203,23 @@ def build_anno_pairs(entries, pair_anno_scores):
                     if pair['summ_id_i'] == int(entry_keys[i][8]) and pair['summ_id_j'] == int(entry_keys[j][8]):
                         if pair['pref'] == 1:
                             pref = [1, 0]
+                            pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
                             continue
                         else:
                             pref = [0, 1]
+                            pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
                             continue
-                    else:
-                        if pair['summ_id_j'] == int(entry_keys[i][8]) and pair['summ_id_i'] == int(entry_keys[j][8]):
-
-                            if pair['pref'] == 1:
-                                pref = [0, 1]
-                                continue
-                            else:
-                                pref = [1, 0]
-                                continue
-                pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
-                # print(pair_list)
-        topic_count += 1
-        summ_count = summ_count + len(summ_ids)
+                    elif pair['summ_id_j'] == int(entry_keys[i][8]) and pair['summ_id_i'] == int(entry_keys[j][8]):
+                        if pair['pref'] == 1:
+                            pref = [0, 1]
+                            pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
+                            continue
+                        else:
+                            pref = [1, 0]
+                            pair_list.append((article_id, summ_ids[i], summ_ids[j], pref))
+                            continue
+            topic_count += 1
+            summ_count = summ_count + len(summ_ids)
     print("topics", topic_count)
     print("summ", summ_count)
     # print(pair_list)
@@ -415,7 +415,7 @@ def test_rewarder(vec_list, human_scores, model, device, plot_file=None):
                'pcc_global': [], 'tau_global': []}
     true_scores_all = []
     pred_scores_all = np.array([])
-    #print(human_scores)
+    # print(human_scores)
     # pred_scores_all = []
     for article_id in human_scores:
         entry = human_scores[article_id]
