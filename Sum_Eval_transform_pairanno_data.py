@@ -34,7 +34,7 @@ for index, row in df.iterrows():
     score_list['grammar'] = 0.0
     score_list['hter'] = 0.0
     score_list['time'] = 0.0
-    score_list['overall'] = 0.0
+    score_list['structure'] = 0.0
     score_list['focus'] = 0.0
     score_list['redundancy'] = 0.0
     # read summary text
@@ -66,5 +66,5 @@ for index, row in df.iterrows():
         summ_list.append(entry)
         json_data[topic] = summ_list
 
-with open('SumEval/data/sorted_scores_pair_anno_sumEval.json', 'w') as write_file:
+with open('SumEval/data/sorted_scores_pair_anno_sumEval_structure.json', 'w') as write_file:
     json.dump(json_data, write_file)

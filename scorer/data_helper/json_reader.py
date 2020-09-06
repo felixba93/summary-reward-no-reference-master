@@ -235,7 +235,7 @@ def read_sorted_scores():
 
 
 def read_pair_anno_scores():
-    pair_anno_scores_path = os.path.join(DATA_DIR, 'sumEval_pair_scores.json')
+    pair_anno_scores_path = os.path.join(DATA_DIR, 'sumEval_pair_scores_structure.json')
     return json.load(open(pair_anno_scores_path, "r"))
 
 

@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 import csv
 
 
-def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'):
+def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='structure'):
     train = {}
     dev = {}
     test = {}
@@ -49,7 +49,7 @@ def parse_split_data(sorted_scores, train_percent, dev_percent, prompt='overall'
     return train, dev, test, all
 
 
-def parse_split_data_balanced(sorted_scores, train_percent, dev_percent, prompt='overall'):
+def parse_split_data_balanced(sorted_scores, train_percent, dev_percent, prompt='structure'):
     train = {}
     dev = {}
     test = {}

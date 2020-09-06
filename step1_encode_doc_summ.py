@@ -112,7 +112,7 @@ def encode_doc_summ(stem=False, remove_stop=False):
         for i, sid in enumerate(summ_ids):
             vec_dic[article_id]['sys_summ{}'.format(sid)] = raw_bert_encoder(bert_model, bert_tokenizer, [sys_summs[i]])
 
-    save_file_name = 'doc_summ_bert_vectors_likert_structure'
+    save_file_name = 'doc_summ_bert_vectors_pair_structure'
     if stem: save_file_name + '_stem'
     if remove_stop: save_file_name + '_removeStop'
     save_file_name += '.pkl'

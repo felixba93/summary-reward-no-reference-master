@@ -4,7 +4,7 @@ import statistics
 
 # set criterion for which you want to create the list of pairs: Referential Clarity, Non-Redundancy, Structure, Readability, Information Content,
 # Overall Quality
-target_criterion = 'Overall Quality'
+target_criterion = 'Structure'
 
 
 # function to check for duplicate entries
@@ -34,6 +34,10 @@ for index, row in df.iterrows():
     # get values for one row
     method_i = row['method_i']
     method_j = row['method_j']
+    if method_i == 'MMR*':
+        method_i = 'MMR_star'
+    if method_j == 'MMR*':
+        method_j = 'MMR_star'
     topic = row['topic']
     criterion = row['criterion']
     i_greater_j = row['i greater j?']
@@ -45,7 +49,7 @@ for index, row in df.iterrows():
         for sorted_scores_entry in sorted_scores[str(topic)]:
             if sorted_scores_entry['sys_name'] == str(method_i):
                 summ_id_i = sorted_scores_entry['summ_id']
-            if sorted_scores_entry['sys_name'] == method_j:
+            if sorted_scores_entry['sys_name'] == str(method_j):
                 summ_id_j = sorted_scores_entry['summ_id']
 
         # create entry
@@ -83,5 +87,5 @@ for topic in json_data:
         else:
             entry['pref'] = 0
 
-with open('SumEval/data/sumEval_pair_scores.json', 'w') as write_file:
+with open('SumEval/data/sumEval_pair_scores_structure.json', 'w') as write_file:
     json.dump(json_data, write_file)
